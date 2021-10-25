@@ -17,6 +17,11 @@ let appDisplay = null;
 let resultsView = null;
 let inSearch = false;
 
+// TODO css
+
+// TODO: new folder popup
+// TODO: rename popup
+
 // ModalDialog normally fills screen, though that part of the widget is
 // invisible. However, Gnome still treats it as the target for drag and
 // drop, breaking drag to dock behavior. This implementation doesn't have
@@ -86,6 +91,21 @@ class CosmicAppDisplay extends St.Widget {
             Main.queueDeferredWork(this._redisplayWorkId);
         });
 
+        const rename_icon = new St.Icon ( { icon_name: 'edit-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
+        const rename_button = new St.Button({ child: rename_icon });
+        // TODO: handle 'clicked'
+
+        const delete_icon = new St.Icon ( { icon_name: 'edit-delete-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
+        const delete_button = new St.Button({ child: delete_icon });
+        // TODO: handle 'clicked'
+
+        // TODO add title, icons
+        this._headerBox = new St.BoxLayout();
+        this._headerBox.x_align = Clutter.ActorAlign.END;
+        this._headerBox.add_actor(rename_button);
+        this._headerBox.add_actor(delete_button);
+        this.add_actor(this._headerBox);
+
         this._scrollView = new St.ScrollView({
             hscrollbar_policy: St.PolicyType.NEVER,
             x_expand: true,
@@ -113,6 +133,8 @@ class CosmicAppDisplay extends St.Widget {
             const icon = new AppIcon(app);
             this._box.add_actor(icon);
         });
+
+        // TODO: Separator
 
         this._folderBox = new St.Viewport({
             layout_manager: new Clutter.FlowLayout({
@@ -143,12 +165,12 @@ class CosmicAppDisplay extends St.Widget {
 
             // TODO: categories, excluded-apps
 
+            // TODO: recieve drop
             const icon = new BaseIcon(name, { createIcon: size => {
-                return new St.Icon ( { icon_name: 'folder', icon_size: size } );
+                return new St.Icon ( { icon_name: 'folder-symbolic', icon_size: size, style: "color: #9b9b9b" } );
             } });
 
-            const button = new St.Button({ style_class: 'app-well-app' });
-            button.add_actor(icon);
+            const button = new St.Button({ child: icon, style_class: 'app-well-app' });
 
             button.connect('clicked', () => this._filterApps(id));
             this._folderBox.add_actor(button);
@@ -165,18 +187,26 @@ class CosmicAppDisplay extends St.Widget {
 
         // TODO: translate name
         const home_icon = new BaseIcon("Home", { createIcon: size => {
-            return new St.Icon ( { icon_name: 'user-home', icon_size: size } );
+            return new St.Icon ( { icon_name: 'go-home-symbolic', icon_size: size, style: "color: #9b9b9b" } );
         } });
-
-        const home_button = new St.Button({ style_class: 'app-well-app' });
-        home_button.add_actor(home_icon);
-
+        const home_button = new St.Button({ child: home_icon, style_class: 'app-well-app' });
         home_button.connect('clicked', () => this._filterApps(null));
         this._folderBox.insert_child_at_index(home_button, 0);
+
+        // TODO translate
+        const create_icon = new BaseIcon("Create Folder", { createIcon: size => {
+            return new St.Icon ( { icon_name: 'folder-new-symbolic', icon_size: size, style: "color: #9b9b9b" } );
+        } });
+        const create_button = new St.Button({ child: create_icon, style_class: 'app-well-app' });
+        this._folderBox.add_actor(create_button);
+        // TODO: handle 'clicked'
     }
 
     _filterApps(folder) {
-        const ids = (folder !== null) ? this._folder_apps[folder] : this._home_apps;
+        const in_folder = (folder !== null);
+        const ids = in_folder ? this._folder_apps[folder] : this._home_apps;
+
+        // TODO: show title, edit/delete button
 
         this._box.get_children().forEach(app => {
             const appInfo = app.app.app_info;
@@ -286,7 +316,6 @@ var CosmicSearchResultsView = GObject.registerClass({
 
             // XXX
         });
-        global.log(results);
         // TODO
     }
 
@@ -322,8 +351,6 @@ function fadeSearch(newInSearch) {
 }
 
 function enable() {
-    global.log(Shell.AppSystem.get_default().get_installed());
-
     searchEntry = new St.Entry({
         style_class: 'search-entry',
         hint_text: _('Type to search'),
