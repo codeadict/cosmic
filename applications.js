@@ -1,6 +1,7 @@
 const { Clutter, Gio, GObject, Shell, St } = imports.gi;
-const { AppDisplay, AppIcon, AppSearchProvider } = imports.ui.appDisplay;
+const { AppDisplay, AppIcon, AppSearchProvider, AppViewItem } = imports.ui.appDisplay;
 const { BaseIcon } = imports.ui.iconGrid;
+const DND = imports.ui.dnd;
 const { ExtensionState } = imports.misc.extensionUtils;
 const Main = imports.ui.main;
 const { ModalDialog, State } = imports.ui.modalDialog;
@@ -22,7 +23,7 @@ let inSearch = false;
 // TODO: new folder popup
 // TODO: rename popup
 
-// TODO: recieve drop
+// TODO: recieve drop, and work for home
 var CosmicFolderButton = GObject.registerClass({
 }, class CosmicFolderButton extends St.Button {
     _init(name) {
@@ -31,6 +32,19 @@ var CosmicFolderButton = GObject.registerClass({
         } });
 
         super._init({ child: this._icon, style_class: 'app-well-app' });
+        this._delegate = this;
+    }
+
+    handleDragOver(source, _actor, _x, _y, _time) {
+        if (!(source instanceof AppViewItem))
+            return DND.DragMotionResult.CONTINUE;
+
+        return DND.DragMotionResult.COPY_DROP;
+    }
+
+    acceptDrop(source, _actor, _x, _y, _time) {
+        // TODO: actually move to folder
+        return source instanceof AppViewItem;
     }
 });
 
@@ -379,8 +393,9 @@ function enable() {
     });
 
     const stack = new Shell.Stack({});
-    stack.add_child(appDisplay);
     stack.add_child(resultsView);
+    // Has to be top child to accept drag-and-drop
+    stack.add_child(appDisplay);
 
     const box = new St.BoxLayout({ vertical: true });
     box.add_child(searchEntry);
