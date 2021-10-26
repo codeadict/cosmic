@@ -22,6 +22,18 @@ let inSearch = false;
 // TODO: new folder popup
 // TODO: rename popup
 
+// TODO: recieve drop
+var CosmicFolderButton = GObject.registerClass({
+}, class CosmicFolderButton extends St.Button {
+    _init(name) {
+        this._icon = new BaseIcon(name, { createIcon: size => {
+            return new St.Icon ( { icon_name: 'folder-symbolic', icon_size: size, style: "color: #9b9b9b" } );
+        } });
+
+        super._init({ child: this._icon, style_class: 'app-well-app' });
+    }
+});
+
 // ModalDialog normally fills screen, though that part of the widget is
 // invisible. However, Gnome still treats it as the target for drag and
 // drop, breaking drag to dock behavior. This implementation doesn't have
@@ -165,15 +177,9 @@ class CosmicAppDisplay extends St.Widget {
 
             // TODO: categories, excluded-apps
 
-            // TODO: recieve drop
-            const icon = new BaseIcon(name, { createIcon: size => {
-                return new St.Icon ( { icon_name: 'folder-symbolic', icon_size: size, style: "color: #9b9b9b" } );
-            } });
-
-            const button = new St.Button({ child: icon, style_class: 'app-well-app' });
-
-            button.connect('clicked', () => this._filterApps(id));
-            this._folderBox.add_actor(button);
+            const folder_button = new CosmicFolderButton(name);
+            folder_button.connect('clicked', () => this._filterApps(id));
+            this._folderBox.add_actor(folder_button);
         });
 
         this._home_apps = this._box.get_children().map(x => x.getId()).filter(id => {
