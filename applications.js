@@ -1,5 +1,5 @@
 const { Clutter, Gio, GObject, Shell, St } = imports.gi;
-const { AppDisplay, AppIcon, AppSearchProvider, AppViewItem } = imports.ui.appDisplay;
+const { AppDisplay, AppIcon, AppSearchProvider } = imports.ui.appDisplay;
 const { BaseIcon } = imports.ui.iconGrid;
 const DND = imports.ui.dnd;
 const { ExtensionState } = imports.misc.extensionUtils;
@@ -49,12 +49,14 @@ var CosmicFolderButton = GObject.registerClass({
             return new St.Icon ( { icon_name: icon_name, icon_size: size, style: "color: #9b9b9b" } );
         } });
 
+        this._folder_settings = folder_settings;
+
         super._init({ child: this._icon, style_class: 'app-well-app' });
         this._delegate = this;
     }
 
     handleDragOver(source, _actor, _x, _y, _time) {
-        if (!(source instanceof AppViewItem))
+        if (!(source instanceof AppIcon))
             return DND.DragMotionResult.CONTINUE;
 
         return DND.DragMotionResult.COPY_DROP;
@@ -62,7 +64,21 @@ var CosmicFolderButton = GObject.registerClass({
 
     acceptDrop(source, _actor, _x, _y, _time) {
         // TODO: actually move to folder
-        return source instanceof AppViewItem;
+        if (!(source instanceof AppIcon))
+            return false;
+
+        global.log("A");
+
+        // TODO: remove from previous folder
+        // TODO: handle home
+
+        const id = source.getId();
+        let apps = this._folder_settings.get_strv('apps');
+        if (!apps.includes(id))
+            apps.push(id);
+        this._folder_settings.set_strv('apps', apps);
+
+        return true;
     }
 });
 
@@ -196,8 +212,12 @@ class CosmicAppDisplay extends St.Widget {
             const path = '%sfolders/%s/'.format(this._folderSettings.path, id);
             const folder = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders.folder',
                                               path });
-            // folder.connect('changed', () => {});
-
+            folder.connect('changed', () => {
+                this._folder_apps[id] = folder.get_strv('apps');
+                this._updateHomeApps();
+                if (this._folder !== undefined)
+                    this._filterApps(this._folder);
+            });
             this._folder_apps[id] = folder.get_strv('apps');
 
             // TODO: categories, excluded-apps
@@ -207,13 +227,7 @@ class CosmicAppDisplay extends St.Widget {
             this._folderBox.add_actor(folder_button);
         });
 
-        this._home_apps = this._box.get_children().map(x => x.getId()).filter(id => {
-            for (const k in this._folder_apps) {
-                if (this._folder_apps[k].includes(id))
-                    return false;
-            }
-            return true;
-        });
+        this._updateHomeApps();
         this._filterApps(null);
 
         const home_button = new CosmicFolderButton(null);
@@ -229,7 +243,19 @@ class CosmicAppDisplay extends St.Widget {
         // TODO: handle 'clicked'
     }
 
+    _updateHomeApps() {
+        this._home_apps = this._box.get_children().map(x => x.getId()).filter(id => {
+            for (const k in this._folder_apps) {
+                if (this._folder_apps[k].includes(id))
+                    return false;
+            }
+            return true;
+        });
+    }
+
     _filterApps(folder) {
+        this._folder = folder;
+
         const in_folder = (folder !== null);
         const ids = in_folder ? this._folder_apps[folder] : this._home_apps;
 
