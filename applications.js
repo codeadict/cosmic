@@ -56,29 +56,37 @@ var CosmicFolderButton = GObject.registerClass({
     }
 
     handleDragOver(source, _actor, _x, _y, _time) {
-        if (!(source instanceof AppIcon))
+        if (!(source instanceof AppIcon) || this._getAppDisplay(source) === null)
             return DND.DragMotionResult.CONTINUE;
 
         return DND.DragMotionResult.COPY_DROP;
     }
 
     acceptDrop(source, _actor, _x, _y, _time) {
-        // TODO: actually move to folder
-        if (!(source instanceof AppIcon))
+        const app_display = this._getAppDisplay(source);
+
+        if (!(source instanceof AppIcon) || app_display === null)
             return false;
 
-        global.log("A");
-
         // TODO: remove from previous folder
-        // TODO: handle home
 
-        const id = source.getId();
-        let apps = this._folder_settings.get_strv('apps');
-        if (!apps.includes(id))
-            apps.push(id);
-        this._folder_settings.set_strv('apps', apps);
+        if (this._folder_settings !== null) {
+            const id = source.getId();
+            let apps = this._folder_settings.get_strv('apps');
+            if (!apps.includes(id))
+                apps.push(id);
+            this._folder_settings.set_strv('apps', apps);
+        }
 
         return true;
+    }
+
+    _getAppDisplay(app_icon) {
+        for (let actor = app_icon; actor !== null; actor = actor.get_parent()) {
+            if (actor instanceof CosmicAppDisplay)
+                return actor;
+        }
+        return null;
     }
 });
 
@@ -216,22 +224,22 @@ class CosmicAppDisplay extends St.Widget {
                 this._folder_apps[id] = folder.get_strv('apps');
                 this._updateHomeApps();
                 if (this._folder !== undefined)
-                    this._filterApps(this._folder);
+                    this.setFolder(this._folder);
             });
             this._folder_apps[id] = folder.get_strv('apps');
 
             // TODO: categories, excluded-apps
 
             const folder_button = new CosmicFolderButton(folder);
-            folder_button.connect('clicked', () => this._filterApps(id));
+            folder_button.connect('clicked', () => this.setFolder(id));
             this._folderBox.add_actor(folder_button);
         });
 
         this._updateHomeApps();
-        this._filterApps(null);
+        this.setFolder(null);
 
         const home_button = new CosmicFolderButton(null);
-        home_button.connect('clicked', () => this._filterApps(null));
+        home_button.connect('clicked', () => this.setFolder(null));
         this._folderBox.insert_child_at_index(home_button, 0);
 
         // TODO translate
@@ -253,7 +261,11 @@ class CosmicAppDisplay extends St.Widget {
         });
     }
 
-    _filterApps(folder) {
+    getFolder() {
+        return this._folder;
+    }
+
+    setFolder(folder) {
         this._folder = folder;
 
         const in_folder = (folder !== null);
@@ -273,7 +285,7 @@ class CosmicAppDisplay extends St.Widget {
     }
 
     reset() {
-        this._filterApps(null);
+        this.setFolder(null);
     }
 });
 
