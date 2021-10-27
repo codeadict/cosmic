@@ -23,12 +23,30 @@ let inSearch = false;
 // TODO: new folder popup
 // TODO: rename popup
 
-// TODO: recieve drop, and work for home
+// TODO: recieve drop
 var CosmicFolderButton = GObject.registerClass({
 }, class CosmicFolderButton extends St.Button {
-    _init(name) {
+    _init(folder_settings) {
+        let name;
+        let icon_name;
+        if (folder_settings === null) {
+            // TODO: translate
+            name = 'Home';
+
+            icon_name = 'go-home-symbolic';
+        } else {
+            name = folder_settings.get_string('name');
+            if (folder_settings.get_boolean('translate')) {
+                const translated = Shell.util_get_translated_folder_name(name);
+                if (translated !== null)
+                    name = translated;
+            }
+
+            icon_name = 'folder-symbolic';
+        }
+
         this._icon = new BaseIcon(name, { createIcon: size => {
-            return new St.Icon ( { icon_name: 'folder-symbolic', icon_size: size, style: "color: #9b9b9b" } );
+            return new St.Icon ( { icon_name: icon_name, icon_size: size, style: "color: #9b9b9b" } );
         } });
 
         super._init({ child: this._icon, style_class: 'app-well-app' });
@@ -180,18 +198,11 @@ class CosmicAppDisplay extends St.Widget {
                                               path });
             // folder.connect('changed', () => {});
 
-            let name = folder.get_string('name');
-            if (folder.get_boolean('translate')) {
-                const translated = Shell.util_get_translated_folder_name(name);
-                if (translated !== null)
-                    name = translated;
-            }
-
             this._folder_apps[id] = folder.get_strv('apps');
 
             // TODO: categories, excluded-apps
 
-            const folder_button = new CosmicFolderButton(name);
+            const folder_button = new CosmicFolderButton(folder);
             folder_button.connect('clicked', () => this._filterApps(id));
             this._folderBox.add_actor(folder_button);
         });
@@ -205,11 +216,7 @@ class CosmicAppDisplay extends St.Widget {
         });
         this._filterApps(null);
 
-        // TODO: translate name
-        const home_icon = new BaseIcon("Home", { createIcon: size => {
-            return new St.Icon ( { icon_name: 'go-home-symbolic', icon_size: size, style: "color: #9b9b9b" } );
-        } });
-        const home_button = new St.Button({ child: home_icon, style_class: 'app-well-app' });
+        const home_button = new CosmicFolderButton(null);
         home_button.connect('clicked', () => this._filterApps(null));
         this._folderBox.insert_child_at_index(home_button, 0);
 
