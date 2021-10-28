@@ -1,4 +1,4 @@
-const { Clutter, Gio, GObject, Shell, St } = imports.gi;
+const { Clutter, Gio, GLib, GObject, Shell, St } = imports.gi;
 const { AppDisplay, AppIcon, AppSearchProvider } = imports.ui.appDisplay;
 const { BaseIcon } = imports.ui.iconGrid;
 const DND = imports.ui.dnd;
@@ -159,17 +159,6 @@ class CosmicAppDisplay extends St.Widget {
             layout_manager: new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL }),
         });
 
-        this._redisplayWorkId = Main.initializeDeferredWork(this, this._redisplay.bind(this));
-
-        this._folderSettings = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders' });
-        this._folderSettings.connect('changed::folder-children', () => {
-            Main.queueDeferredWork(this._redisplayWorkId);
-        });
-
-        Shell.AppSystem.get_default().connect('installed-changed', () => {
-            Main.queueDeferredWork(this._redisplayWorkId);
-        });
-
         const rename_icon = new St.Icon ( { icon_name: 'edit-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
         const rename_button = new St.Button({ child: rename_icon });
         // TODO: handle 'clicked'
@@ -226,40 +215,21 @@ class CosmicAppDisplay extends St.Widget {
 
         this._folder_apps = {};
 
-        const folders = this._folderSettings.get_strv('folder-children');
-        folders.forEach(id => {
-            const path = '%sfolders/%s/'.format(this._folderSettings.path, id);
-            const folder = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders.folder',
-                                              path });
-            folder.connect('changed', () => {
-                this._folder_apps[id] = folder.get_strv('apps');
-                this._updateHomeApps();
-                if (this._folder !== undefined)
-                    this.setFolder(this._folder);
-            });
-            this._folder_apps[id] = folder.get_strv('apps');
+        this._redisplayWorkId = Main.initializeDeferredWork(this, this._redisplay.bind(this));
 
-            // TODO: categories, excluded-apps
-
-            const folder_button = new CosmicFolderButton(this, folder);
-            folder_button.connect('clicked', () => this.setFolder(id));
-            this._folderBox.add_actor(folder_button);
+        this._folderSettings = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders' });
+        this._folderSettings.connect('changed::folder-children', () => {
+            Main.queueDeferredWork(this._redisplayWorkId);
         });
+
+        Shell.AppSystem.get_default().connect('installed-changed', () => {
+            Main.queueDeferredWork(this._redisplayWorkId);
+        });
+
+        this._redisplay();
 
         this._updateHomeApps();
         this.setFolder(null);
-
-        const home_button = new CosmicFolderButton(this, null);
-        home_button.connect('clicked', () => this.setFolder(null));
-        this._folderBox.insert_child_at_index(home_button, 0);
-
-        // TODO translate
-        const create_icon = new BaseIcon("Create Folder", { createIcon: size => {
-            return new St.Icon ( { icon_name: 'folder-new-symbolic', icon_size: size, style: "color: #9b9b9b" } );
-        } });
-        const create_button = new St.Button({ child: create_icon, style_class: 'app-well-app' });
-        this._folderBox.add_actor(create_button);
-        // TODO: handle 'clicked'
     }
 
     _updateHomeApps() {
@@ -292,11 +262,100 @@ class CosmicAppDisplay extends St.Widget {
     }
 
     _redisplay() {
-        // TODO
+        // TODO: check for new/removed apps
+
+        // XXX check which folders changed
+        this._folderBox.destroy_all_children();
+
+        const home_button = new CosmicFolderButton(this, null);
+        home_button.connect('clicked', () => this.setFolder(null));
+        this._folderBox.add_actor(home_button);
+
+        const folders = this._folderSettings.get_strv('folder-children');
+        folders.forEach(id => {
+            const path = '%sfolders/%s/'.format(this._folderSettings.path, id);
+            const folder = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders.folder',
+                                              path });
+            folder.connect('changed', () => {
+                this._folder_apps[id] = folder.get_strv('apps');
+                this._updateHomeApps();
+                if (this._folder !== undefined)
+                    this.setFolder(this._folder);
+            });
+            this._folder_apps[id] = folder.get_strv('apps');
+
+            // TODO: categories, excluded-apps
+
+            const folder_button = new CosmicFolderButton(this, folder);
+            folder_button.connect('clicked', () => this.setFolder(id));
+            this._folderBox.add_actor(folder_button);
+        });
+
+        // TODO translate
+        const create_icon = new BaseIcon("Create Folder", { createIcon: size => {
+            return new St.Icon ( { icon_name: 'folder-new-symbolic', icon_size: size, style: "color: #9b9b9b" } );
+        } });
+        const create_button = new St.Button({ child: create_icon, style_class: 'app-well-app' });
+        create_button.connect('clicked', () => this.open_create_folder_dialog());
+        this._folderBox.add_actor(create_button);
     }
 
     reset() {
         this.setFolder(null);
+    }
+
+    create_folder(name) {
+        const newFolderId = GLib.uuid_string_random();
+        const newFolderPath = this._folderSettings.path.concat('folders/', newFolderId, '/');
+        const newFolderSettings = new Gio.Settings({
+            schema_id: 'org.gnome.desktop.app-folders.folder',
+            path: newFolderPath,
+        });
+
+        if (!newFolderSettings) {
+            log('Error creating new folder');
+            return;
+        }
+
+        newFolderSettings.set_string('name', name);
+
+        let folders = this._folderSettings.get_strv('folder-children');
+        folders.push(newFolderId);
+        this._folderSettings.set_strv('folder-children', folders);
+    }
+
+    open_create_folder_dialog() {
+         // TODO close button?
+        const dialog = new ModalDialog();
+        dialog.connect("key-press-event", (_, event) => {
+            if (event.get_key_symbol() == 65307)
+                dialog.close();
+        });
+
+        const box = new St.BoxLayout({ vertical: true });
+        dialog.contentLayout.add(box);
+
+        const entry = new St.Entry();
+        box.add_actor(entry);
+
+        const button_box = new St.BoxLayout();
+        box.add_actor(button_box);
+
+        const cancel_label = new St.Label({ text: "Cancel" }); // TODO: translate
+        const cancel_button = new St.Button({ child: cancel_label, style_class: 'modal-dialog-button button cancel-button' });
+        cancel_button.connect('clicked', () => dialog.close());
+        button_box.add_actor(cancel_button);
+
+        const create_label = new St.Label({ text: "Create" }); // TODO: translate
+        const create_button = new St.Button({ child: create_label, style_class: 'modal-dialog-button button' });
+        create_button.connect('clicked', () => {
+            this.create_folder(entry.get_text());
+            dialog.close()
+        });
+        button_box.add_actor(create_button);
+
+        dialog.open();
+        entry.grab_key_focus();
     }
 });
 
