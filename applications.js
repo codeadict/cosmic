@@ -160,12 +160,12 @@ class CosmicAppDisplay extends St.Widget {
         });
 
         const rename_icon = new St.Icon ( { icon_name: 'edit-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
-        const rename_button = new St.Button({ child: rename_icon });
+        const rename_button = new St.Button({ child: rename_icon }); // TODO style?
         // TODO: handle 'clicked'
 
         const delete_icon = new St.Icon ( { icon_name: 'edit-delete-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
-        const delete_button = new St.Button({ child: delete_icon });
-        // TODO: handle 'clicked'
+        const delete_button = new St.Button({ child: delete_icon }); // TODO style?
+        delete_button.connect('clicked', () => this.open_delete_folder_dialog());
 
         // TODO add title, icons
         this._headerBox = new St.BoxLayout();
@@ -324,8 +324,26 @@ class CosmicAppDisplay extends St.Widget {
         this._folderSettings.set_strv('folder-children', folders);
     }
 
+    delete_folder(id) {
+        const folderPath = this._folderSettings.path.concat('folders/', id, '/');
+        const folderSettings = new Gio.Settings({
+            schema_id: 'org.gnome.desktop.app-folders.folder',
+            path: folderPath,
+        });
+
+        // Delete relocatable schema
+        if (folderSettings) {
+            let keys = folderSettings.settings_schema.list_keys();
+            for (const key of keys)
+                folderSettings.reset(key);
+        }
+
+        // Remove id from `folder-children`
+        const folders = this._folderSettings.get_strv('folder-children');
+        this._folderSettings.set_strv('folder-children', folders.filter(x => x !== id));
+    }
+
     open_create_folder_dialog() {
-         // TODO close button?
         const dialog = new ModalDialog();
         dialog.connect("key-press-event", (_, event) => {
             if (event.get_key_symbol() == 65307)
@@ -356,6 +374,40 @@ class CosmicAppDisplay extends St.Widget {
 
         dialog.open();
         entry.grab_key_focus();
+    }
+
+    open_delete_folder_dialog() {
+        const id = this.getFolder();
+
+        const dialog = new ModalDialog();
+        dialog.connect("key-press-event", (_, event) => {
+            if (event.get_key_symbol() == 65307)
+                dialog.close();
+        });
+
+        const box = new St.BoxLayout({ vertical: true });
+        dialog.contentLayout.add(box);
+
+        const label = new St.Label({ text: "Delete folder?" }); // TODO: translate
+        box.add_actor(label);
+
+        const button_box = new St.BoxLayout();
+        box.add_actor(button_box);
+
+        const cancel_label = new St.Label({ text: "Cancel" }); // TODO: translate
+        const cancel_button = new St.Button({ child: cancel_label, style_class: 'modal-dialog-button button cancel-button' });
+        cancel_button.connect('clicked', () => dialog.close());
+        button_box.add_actor(cancel_button);
+
+        const delete_label = new St.Label({ text: "Delete" }); // TODO: translate
+        const delete_button = new St.Button({ child: delete_label, style_class: 'modal-dialog-button button' });
+        delete_button.connect('clicked', () => {
+            this.delete_folder(id);
+            dialog.close()
+        });
+        button_box.add_actor(delete_button);
+
+        dialog.open();
     }
 });
 
