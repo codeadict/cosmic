@@ -20,40 +20,45 @@ let inSearch = false;
 
 // TODO css
 
-// TODO: new folder popup
-// TODO: rename popup
-
-// TODO: recieve drop
 var CosmicFolderButton = GObject.registerClass({
 }, class CosmicFolderButton extends St.Button {
     _init(appDisplay, folder_settings) {
-        let name;
+        this._appDisplay = appDisplay;
+        this._folder_settings = folder_settings;
+
         let icon_name;
         if (folder_settings === null) {
-            // TODO: translate
-            name = 'Home';
-
             icon_name = 'go-home-symbolic';
         } else {
-            name = folder_settings.get_string('name');
-            if (folder_settings.get_boolean('translate')) {
+            icon_name = 'folder-symbolic';
+            this._folder_settings.connect('changed::name', () => this._updateName());
+        }
+
+        this._icon = new BaseIcon("", { createIcon: size => {
+            return new St.Icon ( { icon_name: icon_name, icon_size: size, style: "color: #9b9b9b" } );
+        } });
+        this._updateName();
+
+        super._init({ child: this._icon, style_class: 'app-well-app' });
+        this._delegate = this;
+    }
+
+    _updateName() {
+        let name;
+
+        if (this._folder_settings === null) {
+            // TODO: translate
+            name = 'Home';
+        } else {
+            name = this._folder_settings.get_string('name');
+            if (this._folder_settings.get_boolean('translate')) {
                 const translated = Shell.util_get_translated_folder_name(name);
                 if (translated !== null)
                     name = translated;
             }
-
-            icon_name = 'folder-symbolic';
         }
 
-        this._icon = new BaseIcon(name, { createIcon: size => {
-            return new St.Icon ( { icon_name: icon_name, icon_size: size, style: "color: #9b9b9b" } );
-        } });
-
-        this._appDisplay = appDisplay;
-        this._folder_settings = folder_settings;
-
-        super._init({ child: this._icon, style_class: 'app-well-app' });
-        this._delegate = this;
+        this._icon.label.text = name;
     }
 
     handleDragOver(source, _actor, _x, _y, _time) {
@@ -161,7 +166,7 @@ class CosmicAppDisplay extends St.Widget {
 
         const rename_icon = new St.Icon ( { icon_name: 'edit-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
         const rename_button = new St.Button({ child: rename_icon }); // TODO style?
-        // TODO: handle 'clicked'
+        rename_button.connect('clicked', () => this.open_rename_folder_dialog());
 
         const delete_icon = new St.Icon ( { icon_name: 'edit-delete-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
         const delete_button = new St.Button({ child: delete_icon }); // TODO style?
@@ -343,6 +348,17 @@ class CosmicAppDisplay extends St.Widget {
         this._folderSettings.set_strv('folder-children', folders.filter(x => x !== id));
     }
 
+    rename_folder(id, name) {
+        const folderPath = this._folderSettings.path.concat('folders/', id, '/');
+        const folderSettings = new Gio.Settings({
+            schema_id: 'org.gnome.desktop.app-folders.folder',
+            path: folderPath,
+        });
+
+        if (folderSettings)
+            folderSettings.set_string('name', name);
+    }
+
     open_create_folder_dialog() {
         const dialog = new ModalDialog();
         dialog.connect("key-press-event", (_, event) => {
@@ -408,6 +424,52 @@ class CosmicAppDisplay extends St.Widget {
         button_box.add_actor(delete_button);
 
         dialog.open();
+    }
+
+    open_rename_folder_dialog() {
+        const id = this.getFolder();
+
+        if (id === null)
+            return;
+
+        // XXX
+        const folderPath = this._folderSettings.path.concat('folders/', id, '/');
+        const folderSettings = new Gio.Settings({
+            schema_id: 'org.gnome.desktop.app-folders.folder',
+            path: folderPath,
+        });
+        const name = folderSettings.get_string('name');
+
+        const dialog = new ModalDialog();
+        dialog.connect("key-press-event", (_, event) => {
+            if (event.get_key_symbol() == 65307)
+                dialog.close();
+        });
+
+        const box = new St.BoxLayout({ vertical: true });
+        dialog.contentLayout.add(box);
+
+        const entry = new St.Entry({ text: name });
+        box.add_actor(entry);
+
+        const button_box = new St.BoxLayout();
+        box.add_actor(button_box);
+
+        const cancel_label = new St.Label({ text: "Cancel" }); // TODO: translate
+        const cancel_button = new St.Button({ child: cancel_label, style_class: 'modal-dialog-button button cancel-button' });
+        cancel_button.connect('clicked', () => dialog.close());
+        button_box.add_actor(cancel_button);
+
+        const create_label = new St.Label({ text: "Rename" }); // TODO: translate
+        const create_button = new St.Button({ child: create_label, style_class: 'modal-dialog-button button' });
+        create_button.connect('clicked', () => {
+            this.rename_folder(id, entry.get_text());
+            dialog.close()
+        });
+        button_box.add_actor(create_button);
+
+        dialog.open();
+        entry.grab_key_focus();
     }
 });
 
