@@ -21,18 +21,25 @@ let inSearch = false;
 // TODO css
 
 var CosmicFolderButton = GObject.registerClass({
+    Signals: { 'changed': {} },
 }, class CosmicFolderButton extends St.Button {
-    _init(appDisplay, folder_settings) {
+    _init(appDisplay, id) {
         this._appDisplay = appDisplay;
-        this._folder_settings = folder_settings;
 
         let icon_name;
-        if (folder_settings === null) {
+        if (id === null) {
             icon_name = 'go-home-symbolic';
+            this._folderSettings = null;
         } else {
             icon_name = 'folder-symbolic';
-            this._folder_settings.connect('changed::name', () => this._updateName());
-        }
+
+            const path = '%sfolders/%s/'.format(appDisplay._folderSettings.path, id);
+            this._folderSettings = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders.folder',
+                                                      path });
+
+            this._folderSettings.connect('changed::name', () => this._updateName());
+            this._folderSettings.connect('changed', () => this.emit('changed'));
+       }
 
         this._icon = new BaseIcon("", { createIcon: size => {
             return new St.Icon ( { icon_name: icon_name, icon_size: size, style: "color: #9b9b9b" } );
@@ -43,15 +50,31 @@ var CosmicFolderButton = GObject.registerClass({
         this._delegate = this;
     }
 
+    get folderSettings() {
+        return this._folderSettings;
+    }
+
+    get apps() {
+        // TODO: categories, excluded-apps
+        if (this.folderSettings === null)
+            return null; // TODO?
+        else
+            return this.folderSettings.get_strv('apps');
+    }
+
+    get name() {
+        return this._icon.label.text;
+    }
+
     _updateName() {
         let name;
 
-        if (this._folder_settings === null) {
+        if (this.folderSettings === null) {
             // TODO: translate
             name = 'Home';
         } else {
-            name = this._folder_settings.get_string('name');
-            if (this._folder_settings.get_boolean('translate')) {
+            name = this.folderSettings.get_string('name');
+            if (this.folderSettings.get_boolean('translate')) {
                 const translated = Shell.util_get_translated_folder_name(name);
                 if (translated !== null)
                     name = translated;
@@ -87,11 +110,11 @@ var CosmicFolderButton = GObject.registerClass({
             prev_folder.set_strv('apps', apps)
         }
 
-        if (this._folder_settings !== null) {
-            let apps = this._folder_settings.get_strv('apps');
+        if (this.folderSettings !== null) {
+            let apps = this.folderSettings.get_strv('apps');
             if (!apps.includes(id))
                 apps.push(id);
-            this._folder_settings.set_strv('apps', apps);
+            this.folderSettings.set_strv('apps', apps);
         }
 
         return true;
@@ -218,8 +241,6 @@ class CosmicAppDisplay extends St.Widget {
         });
         this.add_actor(this._folderBox);
 
-        this._folder_apps = {};
-
         this._redisplayWorkId = Main.initializeDeferredWork(this, this._redisplay.bind(this));
 
         this._folderSettings = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders' });
@@ -239,8 +260,8 @@ class CosmicAppDisplay extends St.Widget {
 
     _updateHomeApps() {
         this._home_apps = this._box.get_children().map(x => x.getId()).filter(id => {
-            for (const k in this._folder_apps) {
-                if (this._folder_apps[k].includes(id))
+            for (const k in this._folders) {
+                if (this._folders[k].apps.includes(id))
                     return false;
             }
             return true;
@@ -255,7 +276,7 @@ class CosmicAppDisplay extends St.Widget {
         this._folder = folder;
 
         const in_folder = (folder !== null);
-        const ids = in_folder ? this._folder_apps[folder] : this._home_apps;
+        const ids = in_folder ? this._folders[folder].apps : this._home_apps;
 
         // TODO: show title, edit/delete button
 
@@ -269,6 +290,8 @@ class CosmicAppDisplay extends St.Widget {
     _redisplay() {
         // TODO: check for new/removed apps
 
+        this._folders = {};
+
         // XXX check which folders changed
         this._folderBox.destroy_all_children();
 
@@ -278,22 +301,16 @@ class CosmicAppDisplay extends St.Widget {
 
         const folders = this._folderSettings.get_strv('folder-children');
         folders.forEach(id => {
-            const path = '%sfolders/%s/'.format(this._folderSettings.path, id);
-            const folder = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders.folder',
-                                              path });
-            folder.connect('changed', () => {
-                this._folder_apps[id] = folder.get_strv('apps');
+            const folder_button = new CosmicFolderButton(this, id);
+            folder_button.connect('clicked', () => this.setFolder(id));
+            folder_button.connect('changed', () => {
                 this._updateHomeApps();
                 if (this._folder !== undefined)
                     this.setFolder(this._folder);
             });
-            this._folder_apps[id] = folder.get_strv('apps');
 
-            // TODO: categories, excluded-apps
-
-            const folder_button = new CosmicFolderButton(this, folder);
-            folder_button.connect('clicked', () => this.setFolder(id));
             this._folderBox.add_actor(folder_button);
+            this._folders[id] = folder_button;
         });
 
         // TODO translate
@@ -330,11 +347,7 @@ class CosmicAppDisplay extends St.Widget {
     }
 
     delete_folder(id) {
-        const folderPath = this._folderSettings.path.concat('folders/', id, '/');
-        const folderSettings = new Gio.Settings({
-            schema_id: 'org.gnome.desktop.app-folders.folder',
-            path: folderPath,
-        });
+        const folderSettings = this._folders[id].folderSettings;
 
         // Delete relocatable schema
         if (folderSettings) {
@@ -349,11 +362,7 @@ class CosmicAppDisplay extends St.Widget {
     }
 
     rename_folder(id, name) {
-        const folderPath = this._folderSettings.path.concat('folders/', id, '/');
-        const folderSettings = new Gio.Settings({
-            schema_id: 'org.gnome.desktop.app-folders.folder',
-            path: folderPath,
-        });
+        const folderSettings = this._folders[id].folderSettings;
 
         if (folderSettings)
             folderSettings.set_string('name', name);
@@ -432,13 +441,7 @@ class CosmicAppDisplay extends St.Widget {
         if (id === null)
             return;
 
-        // XXX
-        const folderPath = this._folderSettings.path.concat('folders/', id, '/');
-        const folderSettings = new Gio.Settings({
-            schema_id: 'org.gnome.desktop.app-folders.folder',
-            path: folderPath,
-        });
-        const name = folderSettings.get_string('name');
+        const name = this._folders[id].name;
 
         const dialog = new ModalDialog();
         dialog.connect("key-press-event", (_, event) => {
