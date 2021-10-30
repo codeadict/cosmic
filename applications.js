@@ -55,6 +55,7 @@ var CosmicFolderButton = GObject.registerClass({
         super._init({ child: this._icon, style_class: 'app-well-app' });
         this._delegate = this;
 
+        this.connect('clicked', () => this._appDisplay.setFolder(this.id));
         this._updateName();
     }
 
@@ -280,12 +281,20 @@ class CosmicAppDisplay extends St.Widget {
     }
 
     get folder() {
-        return this._folder;
+        if (this._folderId && this._folders[this._folderId])
+            return this._folders[this._folderId];
+        return this._home_button;
     }
 
     setFolder(folderId) {
-        this._folder = folderId === null ? this._home_button : this._folders[folderId];
+        if (this.folder)
+            this.folder.remove_style_pseudo_class('checked');
+
+        this._folderId = folderId;
+
         const ids = folderId !== null ? this.folder.apps : this._home_apps;
+
+        this.folder.add_style_pseudo_class('checked');
 
         if (this._name_binding) {
             this._name_binding.unbind();
@@ -315,13 +324,11 @@ class CosmicAppDisplay extends St.Widget {
         this._folderBox.destroy_all_children();
 
         this._home_button = new CosmicFolderButton(this, null);
-        this._home_button.connect('clicked', () => this.setFolder(null));
         this._folderBox.add_actor(this._home_button);
 
         const folders = this._folderSettings.get_strv('folder-children');
         folders.forEach(id => {
             const folder_button = new CosmicFolderButton(this, id);
-            folder_button.connect('clicked', () => this.setFolder(id));
             folder_button.connect('apps-changed', () => {
                 this._updateHomeApps();
                 if (this._folder !== undefined)
@@ -339,6 +346,8 @@ class CosmicAppDisplay extends St.Widget {
         const create_button = new St.Button({ child: create_icon, style_class: 'app-well-app' });
         create_button.connect('clicked', () => this.open_create_folder_dialog());
         this._folderBox.add_actor(create_button);
+
+        this.folder.add_style_pseudo_class('checked');
     }
 
     reset() {
@@ -447,6 +456,7 @@ class CosmicAppDisplay extends St.Widget {
         const delete_button = new St.Button({ child: delete_label, style_class: 'modal-dialog-button button' });
         delete_button.connect('clicked', () => {
             this.delete_folder(id);
+            this.setFolder(null);
             dialog.close()
         });
         button_box.add_actor(delete_button);
