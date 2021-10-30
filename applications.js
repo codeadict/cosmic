@@ -158,8 +158,8 @@ var CosmicModalDialog = GObject.registerClass({
 
         const monitor = Main.layoutManager.monitors[index];
 
-        const width = box.x2 - box.x1;
-        const height = box.y2 - box.y1;
+        const width = Math.min(box.x2 - box.x1, monitor.width);
+        const height = Math.min(box.y2 - box.y1, monitor.height);
 
         const x = (monitor.width - width) / 2;
         const y = (monitor.height - height) / 2;
