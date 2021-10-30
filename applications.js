@@ -31,6 +31,7 @@ var CosmicFolderButton = GObject.registerClass({
 }, class CosmicFolderButton extends St.Button {
     _init(appDisplay, id) {
         this._appDisplay = appDisplay;
+        this._id = id;
 
         let icon_name;
         if (id === null) {
@@ -55,6 +56,10 @@ var CosmicFolderButton = GObject.registerClass({
         this._delegate = this;
 
         this._updateName();
+    }
+
+    get id() {
+        return this._id;
     }
 
     get folderSettings() {
@@ -106,15 +111,9 @@ var CosmicFolderButton = GObject.registerClass({
         const id = source.getId();
 
         // Remove from previous folder
-        const prev_folder_id = this._appDisplay.getFolder();
-        if (prev_folder_id !== null) {
-            // XXX don't create new Gio.Settings
-            const path = '%sfolders/%s/'.format(this._appDisplay._folderSettings.path, prev_folder_id);
-            const prev_folder = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders.folder',
-                                                   path });
-
-            let apps = prev_folder.get_strv('apps');
-            apps = apps.filter(x => x !== id);
+        const prev_folder = this._appDisplay.folder;
+        if (prev_folder.id !== null) {
+            apps = prev_foledr.apps.filter(x => x !== id);
             prev_folder.set_strv('apps', apps)
         }
 
@@ -280,27 +279,23 @@ class CosmicAppDisplay extends St.Widget {
         });
     }
 
-    getFolder() {
+    get folder() {
         return this._folder;
     }
 
-    setFolder(folder) {
-        this._folder = folder;
-
-        const in_folder = (folder !== null);
-        const ids = in_folder ? this._folders[folder].apps : this._home_apps;
+    setFolder(folderId) {
+        this._folder = folderId === null ? this._home_button : this._folders[folderId];
+        const ids = folderId !== null ? this.folder.apps : this._home_apps;
 
         if (this._name_binding) {
             this._name_binding.unbind();
             this._name_binding = null;
         }
 
-        if (in_folder)
-            this._name_binding = this._folders[folder].bind_property('name',
-                                                                     this._title_label, 'text',
-                                                                     GObject.BindingFlags.SYNC_CREATE);
-        else
-            this._title_label.text = '';
+        global.log(this.folder);
+        this._name_binding = this.folder.bind_property('name',
+                                                       this._title_label, 'text',
+                                                       GObject.BindingFlags.SYNC_CREATE);
 
         // TODO: show title, edit/delete button
 
@@ -319,9 +314,9 @@ class CosmicAppDisplay extends St.Widget {
         // XXX check which folders changed
         this._folderBox.destroy_all_children();
 
-        const home_button = new CosmicFolderButton(this, null);
-        home_button.connect('clicked', () => this.setFolder(null));
-        this._folderBox.add_actor(home_button);
+        this._home_button = new CosmicFolderButton(this, null);
+        this._home_button.connect('clicked', () => this.setFolder(null));
+        this._folderBox.add_actor(this._home_button);
 
         const folders = this._folderSettings.get_strv('folder-children');
         folders.forEach(id => {
@@ -330,7 +325,7 @@ class CosmicAppDisplay extends St.Widget {
             folder_button.connect('apps-changed', () => {
                 this._updateHomeApps();
                 if (this._folder !== undefined)
-                    this.setFolder(this._folder);
+                    this.setFolder(this._folder.id);
             });
 
             this._folderBox.add_actor(folder_button);
@@ -426,7 +421,7 @@ class CosmicAppDisplay extends St.Widget {
     }
 
     open_delete_folder_dialog() {
-        const id = this.getFolder();
+        const id = this.folder.id;
 
         const dialog = new ModalDialog();
         dialog.connect("key-press-event", (_, event) => {
@@ -460,7 +455,7 @@ class CosmicAppDisplay extends St.Widget {
     }
 
     open_rename_folder_dialog() {
-        const id = this.getFolder();
+        const id = this.folder.id;
 
         if (id === null)
             return;
