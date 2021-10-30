@@ -21,7 +21,7 @@ let inSearch = false;
 // TODO css
 
 var CosmicFolderButton = GObject.registerClass({
-    Signals: { 'changed': {} },
+    Signals: { 'apps-changed': {} },
 }, class CosmicFolderButton extends St.Button {
     _init(appDisplay, id) {
         this._appDisplay = appDisplay;
@@ -38,7 +38,7 @@ var CosmicFolderButton = GObject.registerClass({
                                                       path });
 
             this._folderSettings.connect('changed::name', () => this._updateName());
-            this._folderSettings.connect('changed', () => this.emit('changed'));
+            this._folderSettings.connect('changed::apps', () => this.emit('apps-changed'));
        }
 
         this._icon = new BaseIcon("", { createIcon: size => {
@@ -303,7 +303,7 @@ class CosmicAppDisplay extends St.Widget {
         folders.forEach(id => {
             const folder_button = new CosmicFolderButton(this, id);
             folder_button.connect('clicked', () => this.setFolder(id));
-            folder_button.connect('changed', () => {
+            folder_button.connect('apps-changed', () => {
                 this._updateHomeApps();
                 if (this._folder !== undefined)
                     this.setFolder(this._folder);
