@@ -22,6 +22,12 @@ let inSearch = false;
 
 var CosmicFolderButton = GObject.registerClass({
     Signals: { 'apps-changed': {} },
+    Properties: {
+        'name': GObject.ParamSpec.string(
+            'name', 'name', 'name',
+            GObject.ParamFlags.READABLE,
+            null),
+    },
 }, class CosmicFolderButton extends St.Button {
     _init(appDisplay, id) {
         this._appDisplay = appDisplay;
@@ -44,10 +50,11 @@ var CosmicFolderButton = GObject.registerClass({
         this._icon = new BaseIcon("", { createIcon: size => {
             return new St.Icon ( { icon_name: icon_name, icon_size: size, style: "color: #9b9b9b" } );
         } });
-        this._updateName();
 
         super._init({ child: this._icon, style_class: 'app-well-app' });
         this._delegate = this;
+
+        this._updateName();
     }
 
     get folderSettings() {
@@ -82,6 +89,7 @@ var CosmicFolderButton = GObject.registerClass({
         }
 
         this._icon.label.text = name;
+        this.notify('name');
     }
 
     handleDragOver(source, _actor, _x, _y, _time) {
@@ -187,6 +195,8 @@ class CosmicAppDisplay extends St.Widget {
             layout_manager: new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL }),
         });
 
+        this._title_label = new St.Label({ text: "foo", style: "color: #ffffff" });
+
         const rename_icon = new St.Icon ( { icon_name: 'edit-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
         const rename_button = new St.Button({ child: rename_icon }); // TODO style?
         rename_button.connect('clicked', () => this.open_rename_folder_dialog());
@@ -195,11 +205,13 @@ class CosmicAppDisplay extends St.Widget {
         const delete_button = new St.Button({ child: delete_icon }); // TODO style?
         delete_button.connect('clicked', () => this.open_delete_folder_dialog());
 
-        // TODO add title, icons
-        this._headerBox = new St.BoxLayout();
-        this._headerBox.x_align = Clutter.ActorAlign.END;
-        this._headerBox.add_actor(rename_button);
-        this._headerBox.add_actor(delete_button);
+        const buttonBox = new St.BoxLayout({ x_expand: true, x_align: Clutter.ActorAlign.END });
+        buttonBox.add_actor(rename_button);
+        buttonBox.add_actor(delete_button);
+
+        this._headerBox = new St.BoxLayout({ x_expand: true });
+        this._headerBox.add_actor(this._title_label);
+        this._headerBox.add_actor(buttonBox);
         this.add_actor(this._headerBox);
 
         this._scrollView = new St.ScrollView({
@@ -277,6 +289,18 @@ class CosmicAppDisplay extends St.Widget {
 
         const in_folder = (folder !== null);
         const ids = in_folder ? this._folders[folder].apps : this._home_apps;
+
+        if (this._name_binding) {
+            this._name_binding.unbind();
+            this._name_binding = null;
+        }
+
+        if (in_folder)
+            this._name_binding = this._folders[folder].bind_property('name',
+                                                                     this._title_label, 'text',
+                                                                     GObject.BindingFlags.SYNC_CREATE);
+        else
+            this._title_label.text = '';
 
         // TODO: show title, edit/delete button
 
