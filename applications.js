@@ -11,14 +11,9 @@ const { RemoteSearchProvider2 } = imports.ui.remoteSearch;
 const Search = imports.ui.search;
 const { getTermsForSearchString } = imports.ui.searchController;
 
-let dialog = null;
-let button_press_id = null;
-let searchEntry = null;
-let appDisplay = null;
-let resultsView = null;
-let inSearch = false;
-
 // TODO css
+
+let dialog = null;
 
 var CosmicFolderButton = GObject.registerClass({
     Signals: { 'apps-changed': {} },
@@ -631,63 +626,84 @@ function fadeSearch(newInSearch) {
     });
 }
 
+var CosmicAppsDialog = GObject.registerClass({
+}, class CosmicAppsDialog extends CosmicModalDialog {
+    _init() {
+        super._init({ destroyOnClose: false, shellReactive: true });
+        this.connect('destroy', this._onDestroy.bind(this));
+
+        this.searchEntry = new St.Entry({
+            style_class: 'search-entry',
+            hint_text: _('Type to search'),
+            track_hover: true,
+            can_focus: true,
+        });
+
+        this.appDisplay = new CosmicAppDisplay();
+        this.appDisplay.set_size(1000, 1000); // XXX
+
+        this.resultsView = new CosmicSearchResultsView();
+        this.resultsView.opacity = 0;
+
+        this.searchEntry.clutter_text.connect('text-changed', () => {
+            const terms = getTermsForSearchString(searchEntry.get_text());
+            this.resultsView.setTerms(terms);
+
+            fadeSearch(searchEntry.get_text() !== '');
+        });
+
+        const stack = new Shell.Stack();
+        stack.add_child(this.resultsView);
+        // Has to be top child to accept drag-and-drop
+        stack.add_child(this.appDisplay);
+
+        const box = new St.BoxLayout({ vertical: true });
+        box.add_child(this.searchEntry);
+        box.add_child(stack);
+
+        this.contentLayout.add(box);
+        this.dialogLayout._dialog.style = "background-color: #36322f;";
+        this.connect("key-press-event", (_, event) => {
+            if (event.get_key_symbol() == 65307)
+                this.hideDialog();
+        });
+
+        this.button_press_id = global.stage.connect('button-press-event', () => {
+            const [ width, height ] = dialog.dialogLayout._dialog.get_transformed_size();
+            const [ x, y ] = dialog.dialogLayout._dialog.get_transformed_position();
+            const [ cursor_x, cursor_y ] = global.get_pointer();
+
+            if (dialog.visible && (cursor_x < x || cursor_x > x + width || cursor_y < y || cursor_y > y + height))
+                this.hideDialog();
+        });
+    }
+
+    _onDestroy() {
+        global.stage.disconnect(this.button_press_id);
+    }
+
+    showDialog() {
+        this.searchEntry.set_text('');
+        this.appDisplay.reset();
+        this.open();
+        this.searchEntry.grab_key_focus();
+    }
+
+    hideDialog() {
+        this.close();
+
+        const cosmicDock = Main.extensionManager.lookup("cosmic-dock@system76.com");
+        if (cosmicDock && cosmicDock.state === ExtensionState.ENABLED) {
+            cosmicDock.stateObj.dockManager._allDocks.forEach((dock) => dock._onOverviewHiding());
+        }
+    }
+});
+
 function enable() {
-    searchEntry = new St.Entry({
-        style_class: 'search-entry',
-        hint_text: _('Type to search'),
-        track_hover: true,
-        can_focus: true,
-    });
-
-    //appDisplay = new AppDisplay();
-    appDisplay = new CosmicAppDisplay();
-    appDisplay.set_size(1000, 1000); // XXX
-
-    resultsView = new CosmicSearchResultsView();
-    resultsView.opacity = 0;
-
-    searchEntry.clutter_text.connect('text-changed', () => {
-        const terms = getTermsForSearchString(searchEntry.get_text());
-        resultsView.setTerms(terms);
-
-        fadeSearch(searchEntry.get_text() !== '');
-    });
-
-    const stack = new Shell.Stack({});
-    stack.add_child(resultsView);
-    // Has to be top child to accept drag-and-drop
-    stack.add_child(appDisplay);
-
-    const box = new St.BoxLayout({ vertical: true });
-    box.add_child(searchEntry);
-    box.add_child(stack);
-
-    dialog = new CosmicModalDialog({destroyOnClose: false, shellReactive: true});
-    dialog.contentLayout.add(box);
-    dialog.dialogLayout._dialog.style = "background-color: #36322f;";
-    dialog.connect("key-press-event", (_, event) => {
-        if (event.get_key_symbol() == 65307)
-            hide();
-    });
-
-    button_press_id = global.stage.connect('button-press-event', () => {
-        const [ width, height ] = dialog.dialogLayout._dialog.get_transformed_size();
-        const [ x, y ] = dialog.dialogLayout._dialog.get_transformed_position();
-        const [ cursor_x, cursor_y ] = global.get_pointer();
-
-        if (dialog.visible && (cursor_x < x || cursor_x > x + width || cursor_y < y || cursor_y > y + height))
-            hide();
-    });
+    dialog = new CosmicAppsDialog();
 }
 
 function disable() {
-    searchEntry = null;
-    appDisplay = null;
-    resultsView = null;
-
-    global.stage.disconnect(button_press_id);
-    button_press_id = null;
-
     dialog.destroy();
     dialog = null;
 }
@@ -697,17 +713,9 @@ function visible() {
 }
 
 function show() {
-    searchEntry.set_text('');
-    appDisplay.reset();
-    dialog.open();
-    searchEntry.grab_key_focus();
+    dialog.showDialog();
 }
 
 function hide() {
-    dialog.close();
-
-    const cosmicDock = Main.extensionManager.lookup("cosmic-dock@system76.com");
-    if (cosmicDock && cosmicDock.state === ExtensionState.ENABLED) {
-        cosmicDock.stateObj.dockManager._allDocks.forEach((dock) => dock._onOverviewHiding());
-    }
+    dialog.hideDialog();
 }
