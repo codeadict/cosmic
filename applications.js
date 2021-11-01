@@ -64,11 +64,31 @@ var CosmicFolderButton = GObject.registerClass({
     }
 
     get apps() {
-        // TODO: categories, excluded-apps
         if (this.folderSettings === null)
-            return null; // TODO?
-        else
-            return this.folderSettings.get_strv('apps');
+            return null; // TODO: handle home?
+
+        const categories = this.folderSettings.get_strv('categories');
+        const excludedApps = this.folderSettings.get_strv('excluded-apps');
+        const apps = this.folderSettings.get_strv('apps');
+        const appInfos = Shell.AppSystem.get_default().get_installed();
+        return appInfos.filter(function(x) {
+            if (excludedApps.includes(x.get_id())) {
+                return false;
+            } else if (apps.includes(x.get_id())) {
+                return true;
+            } else if (categories.length !== 0) {
+                let app_categories = x.get_categories();
+                app_categories = app_categories ? app_categories.split(';') : [];
+                for (const category of app_categories) {
+                    if (category && categories.includes(category)) {
+                        return true;
+                    }
+                }
+                return false;
+            } else {
+                return false;
+            }
+        }).map(x => x.get_id());
     }
 
     get name() {
@@ -106,10 +126,12 @@ var CosmicFolderButton = GObject.registerClass({
 
         const id = source.getId();
 
+        // TODO: update excluded-apps as needed
+
         // Remove from previous folder
         const prev_folder = this._appDisplay.folder;
         if (prev_folder.id !== null) {
-            apps = prev_foledr.apps.filter(x => x !== id);
+            apps = prev_folder.apps.filter(x => x !== id);
             prev_folder.set_strv('apps', apps)
         }
 
