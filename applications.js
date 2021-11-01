@@ -599,37 +599,13 @@ var CosmicSearchResultsView = GObject.registerClass({
     }
 });
 
-function fadeSearch(newInSearch) {
-    if (newInSearch == inSearch)
-        return;
-
-    inSearch = newInSearch;
-
-    let oldPage, newPage;
-    if (inSearch)
-        [oldPage, newPage] = [appDisplay, resultsView];
-    else
-        [oldPage, newPage] = [resultsView, appDisplay];
-
-    oldPage.ease({
-        opacity: 0,
-        duration: OverviewControls.SIDE_CONTROLS_ANIMATION_TIME,
-        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-        //onStopped: () => this._animateIn(oldPage),
-    });
-
-    newPage.ease({
-        opacity: 255,
-        duration: OverviewControls.SIDE_CONTROLS_ANIMATION_TIME,
-        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-    });
-}
-
 var CosmicAppsDialog = GObject.registerClass({
 }, class CosmicAppsDialog extends CosmicModalDialog {
     _init() {
         super._init({ destroyOnClose: false, shellReactive: true });
         this.connect('destroy', this._onDestroy.bind(this));
+
+        this.inSearch = false;
 
         this.searchEntry = new St.Entry({
             style_class: 'search-entry',
@@ -645,10 +621,10 @@ var CosmicAppsDialog = GObject.registerClass({
         this.resultsView.opacity = 0;
 
         this.searchEntry.clutter_text.connect('text-changed', () => {
-            const terms = getTermsForSearchString(searchEntry.get_text());
+            const terms = getTermsForSearchString(this.searchEntry.get_text());
             this.resultsView.setTerms(terms);
 
-            fadeSearch(searchEntry.get_text() !== '');
+            this.fadeSearch(this.searchEntry.get_text() !== '');
         });
 
         const stack = new Shell.Stack();
@@ -668,17 +644,43 @@ var CosmicAppsDialog = GObject.registerClass({
         });
 
         this.button_press_id = global.stage.connect('button-press-event', () => {
-            const [ width, height ] = dialog.dialogLayout._dialog.get_transformed_size();
-            const [ x, y ] = dialog.dialogLayout._dialog.get_transformed_position();
+            const [ width, height ] = this.dialogLayout._dialog.get_transformed_size();
+            const [ x, y ] = this.dialogLayout._dialog.get_transformed_position();
             const [ cursor_x, cursor_y ] = global.get_pointer();
 
-            if (dialog.visible && (cursor_x < x || cursor_x > x + width || cursor_y < y || cursor_y > y + height))
+            if (this.visible && (cursor_x < x || cursor_x > x + width || cursor_y < y || cursor_y > y + height))
                 this.hideDialog();
         });
     }
 
     _onDestroy() {
         global.stage.disconnect(this.button_press_id);
+    }
+
+    fadeSearch(newInSearch) {
+        if (newInSearch == this.inSearch)
+            return;
+
+        this.inSearch = newInSearch;
+
+        let oldPage, newPage;
+        if (this.inSearch)
+            [oldPage, newPage] = [this.appDisplay, this.resultsView];
+        else
+            [oldPage, newPage] = [this.resultsView, this.appDisplay];
+
+        oldPage.ease({
+            opacity: 0,
+            duration: OverviewControls.SIDE_CONTROLS_ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            //onStopped: () => this._animateIn(oldPage),
+        });
+
+        newPage.ease({
+            opacity: 255,
+            duration: OverviewControls.SIDE_CONTROLS_ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
     }
 
     showDialog() {
