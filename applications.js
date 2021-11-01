@@ -12,6 +12,7 @@ const Search = imports.ui.search;
 const { getTermsForSearchString } = imports.ui.searchController;
 
 // TODO css
+// TODO translate
 
 let dialog = null;
 
@@ -78,7 +79,6 @@ var CosmicFolderButton = GObject.registerClass({
         let name;
 
         if (this.folderSettings === null) {
-            // TODO: translate
             name = 'Home';
         } else {
             name = this.folderSettings.get_string('name');
@@ -334,7 +334,6 @@ class CosmicAppDisplay extends St.Widget {
             this._folders[id] = folder_button;
         });
 
-        // TODO translate
         const create_icon = new BaseIcon("Create Folder", { createIcon: size => {
             return new St.Icon ( { icon_name: 'folder-new-symbolic', icon_size: size, style: "color: #9b9b9b" } );
         } });
@@ -407,12 +406,12 @@ class CosmicAppDisplay extends St.Widget {
         const button_box = new St.BoxLayout();
         box.add_actor(button_box);
 
-        const cancel_label = new St.Label({ text: "Cancel" }); // TODO: translate
+        const cancel_label = new St.Label({ text: "Cancel" });
         const cancel_button = new St.Button({ child: cancel_label, style_class: 'modal-dialog-button button cancel-button' });
         cancel_button.connect('clicked', () => dialog.close());
         button_box.add_actor(cancel_button);
 
-        const create_label = new St.Label({ text: "Create" }); // TODO: translate
+        const create_label = new St.Label({ text: "Create" });
         const create_button = new St.Button({ child: create_label, style_class: 'modal-dialog-button button' });
         create_button.connect('clicked', () => {
             this.create_folder(entry.get_text());
@@ -436,18 +435,18 @@ class CosmicAppDisplay extends St.Widget {
         const box = new St.BoxLayout({ vertical: true });
         dialog.contentLayout.add(box);
 
-        const label = new St.Label({ text: "Delete folder?" }); // TODO: translate
+        const label = new St.Label({ text: "Delete folder?" });
         box.add_actor(label);
 
         const button_box = new St.BoxLayout();
         box.add_actor(button_box);
 
-        const cancel_label = new St.Label({ text: "Cancel" }); // TODO: translate
+        const cancel_label = new St.Label({ text: "Cancel" });
         const cancel_button = new St.Button({ child: cancel_label, style_class: 'modal-dialog-button button cancel-button' });
         cancel_button.connect('clicked', () => dialog.close());
         button_box.add_actor(cancel_button);
 
-        const delete_label = new St.Label({ text: "Delete" }); // TODO: translate
+        const delete_label = new St.Label({ text: "Delete" });
         const delete_button = new St.Button({ child: delete_label, style_class: 'modal-dialog-button button' });
         delete_button.connect('clicked', () => {
             this.delete_folder(id);
@@ -482,12 +481,12 @@ class CosmicAppDisplay extends St.Widget {
         const button_box = new St.BoxLayout();
         box.add_actor(button_box);
 
-        const cancel_label = new St.Label({ text: "Cancel" }); // TODO: translate
+        const cancel_label = new St.Label({ text: "Cancel" });
         const cancel_button = new St.Button({ child: cancel_label, style_class: 'modal-dialog-button button cancel-button' });
         cancel_button.connect('clicked', () => dialog.close());
         button_box.add_actor(cancel_button);
 
-        const create_label = new St.Label({ text: "Rename" }); // TODO: translate
+        const create_label = new St.Label({ text: "Rename" });
         const create_button = new St.Button({ child: create_label, style_class: 'modal-dialog-button button' });
         create_button.connect('clicked', () => {
             this.rename_folder(id, entry.get_text());
