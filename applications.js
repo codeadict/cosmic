@@ -296,7 +296,6 @@ class CosmicAppDisplay extends St.Widget {
             this._name_binding = null;
         }
 
-        global.log(this.folder);
         this._name_binding = this.folder.bind_property('name',
                                                        this._title_label, 'text',
                                                        GObject.BindingFlags.SYNC_CREATE);
@@ -673,9 +672,12 @@ var CosmicAppsDialog = GObject.registerClass({
             opacity: 0,
             duration: OverviewControls.SIDE_CONTROLS_ANIMATION_TIME,
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            // Seems necessary to make all children insensitve to input
+            onComplete: () => oldPage.visible = false,
             //onStopped: () => this._animateIn(oldPage),
         });
 
+        newPage.visible = true;
         newPage.ease({
             opacity: 255,
             duration: OverviewControls.SIDE_CONTROLS_ANIMATION_TIME,
@@ -688,6 +690,7 @@ var CosmicAppsDialog = GObject.registerClass({
         this.appDisplay.reset();
         this.open();
         this.searchEntry.grab_key_focus();
+        Main.wm.allowKeybinding('panel-run-dialog', Shell.ActionMode.ALL);
     }
 
     hideDialog() {
