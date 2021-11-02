@@ -188,16 +188,25 @@ var CosmicFolderButton = GObject.registerClass({
 
         const id = source.getId();
 
-        // TODO: update excluded-apps as needed
-
         // Remove from previous folder
         const prev_folder = this._appDisplay.folder;
         if (prev_folder.id !== null) {
+            if (prev_folder.settings.get_strv('categories').length > 0) {
+                let excluded_apps = prev_folder.settings.get_strv('excluded-apps');
+                if (!excluded_apps.includes(id))
+                    excluded_apps.push(id);
+                prev_folder.settings.set_strv('excluded-apps', excluded_apps);
+            }
+
             const apps = prev_folder.apps.filter(x => x !== id);
             prev_folder.settings.set_strv('apps', apps)
         }
 
         if (this.settings !== null) {
+            let excluded_apps = this.settings.get_strv('excluded-apps');
+            excluded_apps = excluded_apps.filter(x => x !== id);
+            this.settings.set_strv('excluded-apps', excluded_apps);
+
             let apps = this.settings.get_strv('apps');
             if (!apps.includes(id))
                 apps.push(id);
