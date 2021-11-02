@@ -21,11 +21,6 @@ var CosmicFolderEditDialog = GObject.registerClass({
     _init(title, acceptText, hasEntry, onAccept) {
         super._init();
 
-        this.connect("key-press-event", (_, event) => {
-            if (event.get_key_symbol() == 65307)
-                this.close();
-        });
-
         const box = new St.BoxLayout({ vertical: true });
         this.contentLayout.add(box);
 
@@ -39,21 +34,19 @@ var CosmicFolderEditDialog = GObject.registerClass({
             box.add_actor(this._entry);
         }
 
-        const button_box = new St.BoxLayout();
-        box.add_actor(button_box);
-
-        const cancel_label = new St.Label({ text: "Cancel" });
-        const cancel_button = new St.Button({ child: cancel_label, style_class: 'modal-dialog-button button cancel-button' });
-        cancel_button.connect('clicked', () => this.close());
-        button_box.add_actor(cancel_button);
-
-        const create_label = new St.Label({ text: acceptText });
-        const create_button = new St.Button({ child: create_label, style_class: 'modal-dialog-button button' });
-        create_button.connect('clicked', () => {
-            onAccept(this);
-            this.close()
+        this.addButton({
+            label: "Cancel",
+            action: () => this.close(),
+            key: Clutter.KEY_Escape,
         });
-        button_box.add_actor(create_button);
+
+        this.addButton({
+            label: acceptText,
+            action: () => {
+                onAccept(this);
+                this.close();
+            },
+        });
 
         this.open();
 
