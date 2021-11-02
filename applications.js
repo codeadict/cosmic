@@ -362,6 +362,9 @@ class CosmicAppDisplay extends St.Widget {
         create_button.connect('clicked', () => this.open_create_folder_dialog());
         this._folderBox.add_actor(create_button);
 
+        // Hack for issue where `FlowLayout`'s preferred height is wrong before this is called
+        this._folderBox.get_preferred_width(-1);
+
         this.folder.add_style_pseudo_class('checked');
     }
 
@@ -712,7 +715,6 @@ var CosmicAppsDialog = GObject.registerClass({
         this.appDisplay.reset();
         this.open();
         this.searchEntry.grab_key_focus();
-        Main.wm.allowKeybinding('panel-run-dialog', Shell.ActionMode.ALL);
     }
 
     hideDialog() {
