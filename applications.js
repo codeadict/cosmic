@@ -40,8 +40,8 @@ var CosmicFolderButton = GObject.registerClass({
             this._settings = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders.folder',
                                                 path });
 
-            this.settings.connect('changed::name', () => this._updateName());
-            this.settings.connect('changed::apps', () => this.emit('apps-changed'));
+            this.appsChangedId = this.settings.connect('changed::apps', () => this._updateApps());
+            this.nameChangedId = this.settings.connect('changed::name', () => this._updateName());
        }
 
         this._icon = new BaseIcon("", { createIcon: size => {
@@ -52,7 +52,16 @@ var CosmicFolderButton = GObject.registerClass({
         this._delegate = this;
 
         this.connect('clicked', () => this._appDisplay.setFolder(this.id));
+        this.connect('destroy', this._onDestroy.bind(this));
+        this._updateApps();
         this._updateName();
+    }
+
+    _onDestroy() {
+        if (this.settings) {
+            this.settings.disconnect(this.appsChangedId);
+            this.settings.disconnect(this.nameChangedId);
+        }
     }
 
     get id() {
@@ -64,14 +73,24 @@ var CosmicFolderButton = GObject.registerClass({
     }
 
     get apps() {
-        if (this.settings === null)
-            return null; // TODO: handle home?
+        return this._apps;
+    }
+
+    get name() {
+        return this._icon.label.text;
+    }
+
+    _updateApps() {
+        if (this.settings === null) {
+            this._apps = null; // TODO: handle home?
+            return;
+        }
 
         const categories = this.settings.get_strv('categories');
         const excludedApps = this.settings.get_strv('excluded-apps');
         const apps = this.settings.get_strv('apps');
         const appInfos = Shell.AppSystem.get_default().get_installed();
-        return appInfos.filter(function(x) {
+        this._apps = appInfos.filter(function(x) {
             if (excludedApps.includes(x.get_id())) {
                 return false;
             } else if (apps.includes(x.get_id())) {
@@ -89,10 +108,8 @@ var CosmicFolderButton = GObject.registerClass({
                 return false;
             }
         }).map(x => x.get_id());
-    }
 
-    get name() {
-        return this._icon.label.text;
+        this.emit('apps-changed');
     }
 
     _updateName() {
