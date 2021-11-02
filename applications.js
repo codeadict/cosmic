@@ -16,6 +16,58 @@ const { getTermsForSearchString } = imports.ui.searchController;
 
 let dialog = null;
 
+var CosmicFolderEditDialog = GObject.registerClass({
+}, class CosmicFolderEditDialog extends ModalDialog {
+    _init(title, acceptText, hasEntry, onAccept) {
+        super._init();
+
+        this.connect("key-press-event", (_, event) => {
+            if (event.get_key_symbol() == 65307)
+                this.close();
+        });
+
+        const box = new St.BoxLayout({ vertical: true });
+        this.contentLayout.add(box);
+
+        if (title !== null) {
+            const label = new St.Label({ text: title });
+            box.add_actor(label);
+        }
+
+        if (hasEntry) {
+            this._entry = new St.Entry();
+            box.add_actor(this._entry);
+        }
+
+        const button_box = new St.BoxLayout();
+        box.add_actor(button_box);
+
+        const cancel_label = new St.Label({ text: "Cancel" });
+        const cancel_button = new St.Button({ child: cancel_label, style_class: 'modal-dialog-button button cancel-button' });
+        cancel_button.connect('clicked', () => this.close());
+        button_box.add_actor(cancel_button);
+
+        const create_label = new St.Label({ text: acceptText });
+        const create_button = new St.Button({ child: create_label, style_class: 'modal-dialog-button button' });
+        create_button.connect('clicked', () => {
+            onAccept(this);
+            this.close()
+        });
+        button_box.add_actor(create_button);
+
+        this.open();
+
+        if (this._entry)
+            this._entry.grab_key_focus();
+    }
+
+    get entry() {
+        if (this._entry)
+            return this._entry;
+        return null;
+    }
+});
+
 var CosmicFolderButton = GObject.registerClass({
     Signals: { 'apps-changed': {} },
     Properties: {
@@ -431,71 +483,18 @@ class CosmicAppDisplay extends St.Widget {
     }
 
     open_create_folder_dialog() {
-        const dialog = new ModalDialog();
-        dialog.connect("key-press-event", (_, event) => {
-            if (event.get_key_symbol() == 65307)
-                dialog.close();
+        new CosmicFolderEditDialog(null, "Create", true, (dialog) => {
+            this.create_folder(dialog.entry.get_text());
         });
-
-        const box = new St.BoxLayout({ vertical: true });
-        dialog.contentLayout.add(box);
-
-        const entry = new St.Entry();
-        box.add_actor(entry);
-
-        const button_box = new St.BoxLayout();
-        box.add_actor(button_box);
-
-        const cancel_label = new St.Label({ text: "Cancel" });
-        const cancel_button = new St.Button({ child: cancel_label, style_class: 'modal-dialog-button button cancel-button' });
-        cancel_button.connect('clicked', () => dialog.close());
-        button_box.add_actor(cancel_button);
-
-        const create_label = new St.Label({ text: "Create" });
-        const create_button = new St.Button({ child: create_label, style_class: 'modal-dialog-button button' });
-        create_button.connect('clicked', () => {
-            this.create_folder(entry.get_text());
-            dialog.close()
-        });
-        button_box.add_actor(create_button);
-
-        dialog.open();
-        entry.grab_key_focus();
     }
 
     open_delete_folder_dialog() {
         const id = this.folder.id;
 
-        const dialog = new ModalDialog();
-        dialog.connect("key-press-event", (_, event) => {
-            if (event.get_key_symbol() == 65307)
-                dialog.close();
-        });
-
-        const box = new St.BoxLayout({ vertical: true });
-        dialog.contentLayout.add(box);
-
-        const label = new St.Label({ text: "Delete folder?" });
-        box.add_actor(label);
-
-        const button_box = new St.BoxLayout();
-        box.add_actor(button_box);
-
-        const cancel_label = new St.Label({ text: "Cancel" });
-        const cancel_button = new St.Button({ child: cancel_label, style_class: 'modal-dialog-button button cancel-button' });
-        cancel_button.connect('clicked', () => dialog.close());
-        button_box.add_actor(cancel_button);
-
-        const delete_label = new St.Label({ text: "Delete" });
-        const delete_button = new St.Button({ child: delete_label, style_class: 'modal-dialog-button button' });
-        delete_button.connect('clicked', () => {
+        new CosmicFolderEditDialog("Delete folder?", "Delete", false, (dialog) => {
             this.delete_folder(id);
             this.setFolder(null);
-            dialog.close()
         });
-        button_box.add_actor(delete_button);
-
-        dialog.open();
     }
 
     open_rename_folder_dialog() {
@@ -506,36 +505,10 @@ class CosmicAppDisplay extends St.Widget {
 
         const name = this._folders[id].name;
 
-        const dialog = new ModalDialog();
-        dialog.connect("key-press-event", (_, event) => {
-            if (event.get_key_symbol() == 65307)
-                dialog.close();
+        const dialog = new CosmicFolderEditDialog(null, "Rename", true, (dialog) => {
+            this.rename_folder(id, dialog.entry.get_text());
         });
-
-        const box = new St.BoxLayout({ vertical: true });
-        dialog.contentLayout.add(box);
-
-        const entry = new St.Entry({ text: name });
-        box.add_actor(entry);
-
-        const button_box = new St.BoxLayout();
-        box.add_actor(button_box);
-
-        const cancel_label = new St.Label({ text: "Cancel" });
-        const cancel_button = new St.Button({ child: cancel_label, style_class: 'modal-dialog-button button cancel-button' });
-        cancel_button.connect('clicked', () => dialog.close());
-        button_box.add_actor(cancel_button);
-
-        const create_label = new St.Label({ text: "Rename" });
-        const create_button = new St.Button({ child: create_label, style_class: 'modal-dialog-button button' });
-        create_button.connect('clicked', () => {
-            this.rename_folder(id, entry.get_text());
-            dialog.close()
-        });
-        button_box.add_actor(create_button);
-
-        dialog.open();
-        entry.grab_key_focus();
+        dialog.entry.set_text(name);
     }
 });
 
