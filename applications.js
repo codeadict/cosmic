@@ -32,16 +32,16 @@ var CosmicFolderButton = GObject.registerClass({
         let icon_name;
         if (id === null) {
             icon_name = 'go-home-symbolic';
-            this._folderSettings = null;
+            this._settings = null;
         } else {
             icon_name = 'folder-symbolic';
 
             const path = '%sfolders/%s/'.format(appDisplay._folderSettings.path, id);
-            this._folderSettings = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders.folder',
-                                                      path });
+            this._settings = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders.folder',
+                                                path });
 
-            this._folderSettings.connect('changed::name', () => this._updateName());
-            this._folderSettings.connect('changed::apps', () => this.emit('apps-changed'));
+            this.settings.connect('changed::name', () => this._updateName());
+            this.settings.connect('changed::apps', () => this.emit('apps-changed'));
        }
 
         this._icon = new BaseIcon("", { createIcon: size => {
@@ -59,17 +59,17 @@ var CosmicFolderButton = GObject.registerClass({
         return this._id;
     }
 
-    get folderSettings() {
-        return this._folderSettings;
+    get settings() {
+        return this._settings;
     }
 
     get apps() {
-        if (this.folderSettings === null)
+        if (this.settings === null)
             return null; // TODO: handle home?
 
-        const categories = this.folderSettings.get_strv('categories');
-        const excludedApps = this.folderSettings.get_strv('excluded-apps');
-        const apps = this.folderSettings.get_strv('apps');
+        const categories = this.settings.get_strv('categories');
+        const excludedApps = this.settings.get_strv('excluded-apps');
+        const apps = this.settings.get_strv('apps');
         const appInfos = Shell.AppSystem.get_default().get_installed();
         return appInfos.filter(function(x) {
             if (excludedApps.includes(x.get_id())) {
@@ -98,11 +98,11 @@ var CosmicFolderButton = GObject.registerClass({
     _updateName() {
         let name;
 
-        if (this.folderSettings === null) {
+        if (this.settings === null) {
             name = 'Home';
         } else {
-            name = this.folderSettings.get_string('name');
-            if (this.folderSettings.get_boolean('translate')) {
+            name = this.settings.get_string('name');
+            if (this.settings.get_boolean('translate')) {
                 const translated = Shell.util_get_translated_folder_name(name);
                 if (translated !== null)
                     name = translated;
@@ -131,15 +131,15 @@ var CosmicFolderButton = GObject.registerClass({
         // Remove from previous folder
         const prev_folder = this._appDisplay.folder;
         if (prev_folder.id !== null) {
-            apps = prev_folder.apps.filter(x => x !== id);
-            prev_folder.set_strv('apps', apps)
+            const apps = prev_folder.apps.filter(x => x !== id);
+            prev_folder.settings.set_strv('apps', apps)
         }
 
-        if (this.folderSettings !== null) {
-            let apps = this.folderSettings.get_strv('apps');
+        if (this.settings !== null) {
+            let apps = this.settings.get_strv('apps');
             if (!apps.includes(id))
                 apps.push(id);
-            this.folderSettings.set_strv('apps', apps);
+            this.settings.set_strv('apps', apps);
         }
 
         return true;
@@ -393,13 +393,13 @@ class CosmicAppDisplay extends St.Widget {
     }
 
     delete_folder(id) {
-        const folderSettings = this._folders[id].folderSettings;
+        const settings = this._folders[id].settings;
 
         // Delete relocatable schema
-        if (folderSettings) {
-            let keys = folderSettings.settings_schema.list_keys();
+        if (settings) {
+            let keys = settings.settings_schema.list_keys();
             for (const key of keys)
-                folderSettings.reset(key);
+                settings.reset(key);
         }
 
         // Remove id from `folder-children`
@@ -408,10 +408,10 @@ class CosmicAppDisplay extends St.Widget {
     }
 
     rename_folder(id, name) {
-        const folderSettings = this._folders[id].folderSettings;
+        const settings = this._folders[id].settings;
 
-        if (folderSettings)
-            folderSettings.set_string('name', name);
+        if (settings)
+            settings.set_string('name', name);
     }
 
     open_create_folder_dialog() {
