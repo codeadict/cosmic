@@ -6,6 +6,7 @@ const extension = ExtensionUtils.getCurrentExtension();
 const Main = imports.ui.main;
 const Overview = imports.ui.overview;
 const OverviewControls = imports.ui.overviewControls;
+const Search = imports.ui.search;
 const SwitcherPopup = imports.ui.switcherPopup;
 const Util = imports.misc.util;
 const WorkspacesView = imports.ui.workspacesView;
@@ -449,6 +450,18 @@ function gnome_40_enable() {
     });
 
     applications.enable();
+
+    const appIcon_activate = AppDisplay.AppIcon.prototype.activate;
+    inject(AppDisplay.AppIcon.prototype, 'activate', function(button) {
+        appIcon_activate.call(this, button);
+        applications.hide();
+    });
+
+    const searchResult_activate = Search.SearchResult.prototype.activate;
+    inject(Search.SearchResult.prototype, 'activate', function() {
+        searchResult_activate.call(this);
+        applications.hide();
+    });
 }
 
 function gnome_40_disable() {
