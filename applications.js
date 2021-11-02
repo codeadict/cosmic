@@ -347,8 +347,7 @@ class CosmicAppDisplay extends St.Widget {
             const folder_button = new CosmicFolderButton(this, id);
             folder_button.connect('apps-changed', () => {
                 this._updateHomeApps();
-                if (this._folder !== undefined)
-                    this.setFolder(this._folder.id);
+                this.setFolder(this.folder.id);
             });
 
             this._folderBox.add_actor(folder_button);
