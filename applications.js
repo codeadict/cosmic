@@ -209,7 +209,7 @@ var CosmicAppDisplay = GObject.registerClass(
 class CosmicAppDisplay extends St.Widget {
     _init() {
         super._init({
-            layout_manager: new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL }),
+            layout_manager: new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL, spacing: 6 }),
         });
 
         this._title_label = new St.Label({ text: "foo", style: "color: #ffffff" });
@@ -259,7 +259,7 @@ class CosmicAppDisplay extends St.Widget {
             this._box.add_actor(icon);
         });
 
-        // TODO: Separator
+        this.add_actor(new St.Widget({ height: 1, style: "background: #000000;", }));
 
         this._folderBox = new St.Viewport({
             layout_manager: new Clutter.FlowLayout({
