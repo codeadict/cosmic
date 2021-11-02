@@ -229,7 +229,7 @@ class CosmicAppDisplay extends St.Widget {
             layout_manager: new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL, spacing: 6 }),
         });
 
-        this._title_label = new St.Label({ text: "foo", style: "color: #ffffff" });
+        this._title_label = new St.Label({ style: "color: #ffffff; font-weight: bold;" });
 
         const rename_icon = new St.Icon ( { icon_name: 'edit-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
         const rename_button = new St.Button({ child: rename_icon }); // TODO style?
