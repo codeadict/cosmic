@@ -225,6 +225,122 @@ var CosmicFolderButton = GObject.registerClass({
     }
 });
 
+var CosmicAppsHeader = GObject.registerClass({
+    Signals: {
+        'delete-clicked': {},
+        'rename-clicked': {},
+        'search-text-changed': {},
+    },
+    Properties: {
+        'folder': GObject.ParamSpec.object(
+            'folder', 'folder', 'folder',
+            GObject.ParamFlags.READWRITE,
+            CosmicFolderButton.$gtype),
+    },
+}, class CosmicAppsHeader extends Shell.Stack {
+    _init() {
+        super._init();
+
+        this._folder = null;
+        this._inFolder = false;
+
+        this._title_label = new St.Label({ style: "color: #ffffff; font-weight: bold;" });
+
+        const rename_icon = new St.Icon ( { icon_name: 'edit-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
+        const rename_button = new St.Button({ child: rename_icon }); // TODO style?
+        rename_button.connect('clicked', () => this.emit('rename-clicked'));
+
+        const delete_icon = new St.Icon ( { icon_name: 'edit-delete-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
+        const delete_button = new St.Button({ child: delete_icon }); // TODO style?
+        delete_button.connect('clicked', () => this.emit('delete-clicked'));
+
+        const buttonBox = new St.BoxLayout({ x_expand: true, x_align: Clutter.ActorAlign.END });
+        buttonBox.add_actor(rename_button);
+        buttonBox.add_actor(delete_button);
+
+        this._folderHeader = new St.BoxLayout({ opacity: 0, visible: false, x_expand: true });
+        this._folderHeader.add_actor(this._title_label);
+        this._folderHeader.add_actor(buttonBox);
+        this.add_actor(this._folderHeader);
+
+        this._searchEntry = new St.Entry({
+            style_class: 'search-entry',
+            hint_text: _('Type to search'),
+            track_hover: true,
+            can_focus: true,
+        });
+        this.add_actor(this._searchEntry);
+
+        this._searchEntry.clutter_text.connect('text-changed', () => {
+            this.emit('search-text-changed');
+        });
+    }
+
+    get searchText() {
+        return this._searchEntry.get_text();
+    }
+
+    get inFolder() {
+        return this._inFolder;
+    }
+
+    _updateInFolder() {
+        const newInFolder = this.folder && this.folder.id !== null;
+
+        if (newInFolder == this.inFolder)
+            return;
+
+        this._inFolder = newInFolder;
+
+        let oldPage, newPage;
+        if (newInFolder)
+            [oldPage, newPage] = [this._searchEntry, this._folderHeader];
+        else
+            [oldPage, newPage] = [this._folderHeader, this._searchEntry];
+
+        oldPage.ease({
+            opacity: 0,
+            duration: OverviewControls.SIDE_CONTROLS_ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            // Seems necessary to make all children insensitve to input
+            onComplete: () => oldPage.visible = false,
+        });
+
+        newPage.visible = true;
+        newPage.ease({
+            opacity: 255,
+            duration: OverviewControls.SIDE_CONTROLS_ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
+    }
+
+    get folder() {
+        return this._folder;
+    }
+
+    set folder(folder) {
+        this._folder = folder;
+
+        if (this._name_binding) {
+            this._name_binding.unbind();
+            this._name_binding = null;
+        }
+
+        if (folder)
+            this._name_binding = this.folder.bind_property('name',
+                                                           this._title_label, 'text',
+                                                           GObject.BindingFlags.SYNC_CREATE);
+
+        this._updateInFolder();
+        this.notify('folder');
+    }
+
+    reset() {
+        this._searchEntry.set_text('');
+        this._searchEntry.grab_key_focus();
+    }
+});
+
 // ModalDialog normally fills screen, though that part of the widget is
 // invisible. However, Gnome still treats it as the target for drag and
 // drop, breaking drag to dock behavior. This implementation doesn't have
@@ -278,38 +394,16 @@ class CosmicAppFlowLayout extends Clutter.FlowLayout {
 // that, reimplement with preferred design.
 var CosmicAppDisplay = GObject.registerClass({
     Properties: {
-        'in-folder': GObject.ParamSpec.boolean(
-            'in-folder', 'in-folder', 'in-folder',
-            GObject.ParamFlags.READABLE,
-            false),
+        'folder': GObject.ParamSpec.object(
+            'folder', 'folder', 'READABLE',
+            GObject.ParamFlags.READWRITE,
+            CosmicFolderButton.$gtype),
     },
 }, class CosmicAppDisplay extends St.Widget {
     _init() {
         super._init({
             layout_manager: new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL, spacing: 6 }),
         });
-
-        this._title_label = new St.Label({ style: "color: #ffffff; font-weight: bold;" });
-
-        const rename_icon = new St.Icon ( { icon_name: 'edit-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
-        const rename_button = new St.Button({ child: rename_icon }); // TODO style?
-        rename_button.connect('clicked', () => this.open_rename_folder_dialog());
-
-        const delete_icon = new St.Icon ( { icon_name: 'edit-delete-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
-        const delete_button = new St.Button({ child: delete_icon }); // TODO style?
-        delete_button.connect('clicked', () => this.open_delete_folder_dialog());
-
-        const buttonBox = new St.BoxLayout({ x_expand: true, x_align: Clutter.ActorAlign.END });
-        buttonBox.add_actor(rename_button);
-        buttonBox.add_actor(delete_button);
-
-        this._headerBox = new St.BoxLayout({ x_expand: true });
-        this._headerBox.add_actor(this._title_label);
-        this._headerBox.add_actor(buttonBox);
-        this.bind_property('in-folder',
-                           this._headerBox, 'visible',
-                           GObject.BindingFlags.SYNC_CREATE);
-        this.add_actor(this._headerBox);
 
         this._scrollView = new St.ScrollView({
             hscrollbar_policy: St.PolicyType.NEVER,
@@ -392,20 +486,11 @@ var CosmicAppDisplay = GObject.registerClass({
             this.folder.remove_style_pseudo_class('checked');
 
         this._folderId = folderId;
-        this.notify('in-folder');
+        this.notify('folder');
 
         const ids = folderId !== null ? this.folder.apps : this._home_apps;
 
         this.folder.add_style_pseudo_class('checked');
-
-        if (this._name_binding) {
-            this._name_binding.unbind();
-            this._name_binding = null;
-        }
-
-        this._name_binding = this.folder.bind_property('name',
-                                                       this._title_label, 'text',
-                                                       GObject.BindingFlags.SYNC_CREATE);
 
         // TODO: show title, edit/delete button
 
@@ -533,8 +618,9 @@ var CosmicAppDisplay = GObject.registerClass({
 var CosmicSearchResultsView = GObject.registerClass({
     Signals: { 'terms-changed': {} },
 }, class CosmicSearchResultsView extends St.BoxLayout {
-    _init() {
-        super._init();
+    _init(params) {
+        super._init(params);
+
         this._content = new Search.MaxWidthBox({
             name: 'searchResultsContent',
             vertical: true,
@@ -636,29 +722,23 @@ var CosmicAppsDialog = GObject.registerClass({
 
         this.inSearch = false;
 
-        this.searchEntry = new St.Entry({
-            style_class: 'search-entry',
-            hint_text: _('Type to search'),
-            track_hover: true,
-            can_focus: true,
-        });
-
         this.appDisplay = new CosmicAppDisplay();
         this.appDisplay.set_size(1000, 1000); // XXX
 
-        this.resultsView = new CosmicSearchResultsView();
-        this.resultsView.opacity = 0;
+        this.resultsView = new CosmicSearchResultsView({ opacity: 0, visible: false });
 
-        this.searchEntry.clutter_text.connect('text-changed', () => {
-            const terms = getTermsForSearchString(this.searchEntry.get_text());
+        this._header = new CosmicAppsHeader();
+        this._header.connect('rename-clicked', () => this.appDisplay.open_rename_folder_dialog());
+        this._header.connect('delete-clicked', () => this.appDisplay.open_delete_folder_dialog());
+        this._header.connect('search-text-changed', () => {
+            const terms = getTermsForSearchString(this._header.searchText);
             this.resultsView.setTerms(terms);
-
-            this.fadeSearch(this.searchEntry.get_text() !== '');
+            this.fadeSearch(this._header.searchText !== '');
         });
 
-        this.appDisplay.bind_property('in-folder',
-                                      this.searchEntry, 'visible',
-                                      GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.INVERT_BOOLEAN);
+        this.appDisplay.bind_property('folder',
+                                      this._header, 'folder',
+                                      GObject.BindingFlags.SYNC_CREATE);
 
         const stack = new Shell.Stack();
         stack.add_child(this.resultsView);
@@ -666,7 +746,7 @@ var CosmicAppsDialog = GObject.registerClass({
         stack.add_child(this.appDisplay);
 
         const box = new St.BoxLayout({ vertical: true });
-        box.add_child(this.searchEntry);
+        box.add_child(this._header);
         box.add_child(stack);
 
         this.contentLayout.add(box);
@@ -720,10 +800,9 @@ var CosmicAppsDialog = GObject.registerClass({
     }
 
     showDialog() {
-        this.searchEntry.set_text('');
-        this.appDisplay.reset();
         this.open();
-        this.searchEntry.grab_key_focus();
+        this._header.reset();
+        this.appDisplay.reset();
     }
 
     hideDialog() {
