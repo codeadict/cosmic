@@ -244,7 +244,12 @@ var CosmicAppsHeader = GObject.registerClass({
         this._folder = null;
         this._inFolder = false;
 
-        this._title_label = new St.Label({ style: "color: #ffffff; font-weight: bold;" });
+        this._title_label = new St.Label({
+            style: "color: #ffffff; font-weight: bold; font-size: 1.5em;",
+            x_expand: true,
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
 
         const rename_icon = new St.Icon ( { icon_name: 'edit-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
         const rename_button = new St.Button({ child: rename_icon }); // TODO style?
@@ -258,9 +263,9 @@ var CosmicAppsHeader = GObject.registerClass({
         buttonBox.add_actor(rename_button);
         buttonBox.add_actor(delete_button);
 
-        this._folderHeader = new St.BoxLayout({ opacity: 0, visible: false, x_expand: true });
-        this._folderHeader.add_actor(this._title_label);
+        this._folderHeader = new Shell.Stack({ opacity: 0, visible: false, x_expand: true });
         this._folderHeader.add_actor(buttonBox);
+        this._folderHeader.add_actor(this._title_label);
         this.add_actor(this._folderHeader);
 
         this._searchEntry = new St.Entry({
@@ -268,6 +273,7 @@ var CosmicAppsHeader = GObject.registerClass({
             hint_text: _('Type to search'),
             track_hover: true,
             can_focus: true,
+            x_align: Clutter.ActorAlign.CENTER,
         });
         this.add_actor(this._searchEntry);
 
@@ -319,6 +325,9 @@ var CosmicAppsHeader = GObject.registerClass({
     }
 
     set folder(folder) {
+        if (folder == this._folder)
+            return;
+
         this._folder = folder;
 
         if (this._name_binding) {
@@ -326,10 +335,14 @@ var CosmicAppsHeader = GObject.registerClass({
             this._name_binding = null;
         }
 
-        if (folder)
+        if (folder && folder.id !== null) {
             this._name_binding = this.folder.bind_property('name',
                                                            this._title_label, 'text',
                                                            GObject.BindingFlags.SYNC_CREATE);
+            this.grab_key_focus();
+        } else {
+            this.reset();
+        }
 
         this._updateInFolder();
         this.notify('folder');
@@ -830,6 +843,7 @@ function visible() {
 
 function show() {
     dialog.showDialog();
+    Main.wm.allowKeybinding('panel-run-dialog', Shell.ActionMode.ALL);
 }
 
 function hide() {
