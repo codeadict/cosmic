@@ -161,7 +161,7 @@ var CosmicFolderButton = GObject.registerClass({
         let name;
 
         if (this.settings === null) {
-            name = 'Home';
+            name = 'Library Home';
         } else {
             name = this.settings.get_string('name');
             if (this.settings.get_boolean('translate')) {
