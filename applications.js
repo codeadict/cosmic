@@ -514,8 +514,28 @@ var CosmicAppDisplay = GObject.registerClass({
         });
     }
 
+    _getAddedRemovedApps() {
+        const installed = Shell.AppSystem.get_default().get_installed();
+        const appIcons = this._box.get_children();
+
+        const appIcons_ids = appIcons.map(x => x.getId());
+        const added = installed.filter(x => appIcons_ids.includes(x.get_id()));
+
+        const installed_ids = installed.map(x => x.get_id());
+        const removed = appIcons.filter(x => installed_ids.includes(x.getId()));
+
+        return [added, removed];
+    }
+
     _redisplay() {
-        // TODO: check for new/removed apps
+        // Detact apps that are installed/uninstalled
+        const [added, removed] = this._getAddedRemovedApps();
+        removed.forEach(icon => icon.destroy());
+        added.forEach(appInfo => {
+            const app = Shell.AppSystem.get_default().lookup_app(appInfo.get_id());
+            const icon = new AppIcon(app);
+            this._box.add_actor(icon);
+        });
 
         this._folders = {};
 
