@@ -1,5 +1,5 @@
 const { Clutter, Gio, GLib, GObject, Shell, St } = imports.gi;
-const { AppDisplay, AppIcon, AppSearchProvider } = imports.ui.appDisplay;
+const { AppIcon, AppSearchProvider } = imports.ui.appDisplay;
 const { BaseIcon } = imports.ui.iconGrid;
 const DND = imports.ui.dnd;
 const { ExtensionState } = imports.misc.extensionUtils;
@@ -81,7 +81,7 @@ var CosmicFolderButton = GObject.registerClass({
         } else {
             icon_name = 'folder-symbolic';
 
-            const path = '%sfolders/%s/'.format(appDisplay._folderSettings.path, id);
+            const path = '/org/gnome/desktop/app-folders/folders/%s/'.format(id);
             this._settings = new Gio.Settings({ schema_id: 'org.gnome.desktop.app-folders.folder',
                                                 path });
 
