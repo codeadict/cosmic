@@ -276,8 +276,14 @@ class CosmicAppFlowLayout extends Clutter.FlowLayout {
 // AppDisplay and the IconGrid don't work unless we want a paged layout with
 // each app assigned to a particular page. So instead of using or subclassing
 // that, reimplement with preferred design.
-var CosmicAppDisplay = GObject.registerClass(
-class CosmicAppDisplay extends St.Widget {
+var CosmicAppDisplay = GObject.registerClass({
+    Properties: {
+        'in-folder': GObject.ParamSpec.boolean(
+            'in-folder', 'in-folder', 'in-folder',
+            GObject.ParamFlags.READABLE,
+            false),
+    },
+}, class CosmicAppDisplay extends St.Widget {
     _init() {
         super._init({
             layout_manager: new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL, spacing: 6 }),
@@ -300,6 +306,9 @@ class CosmicAppDisplay extends St.Widget {
         this._headerBox = new St.BoxLayout({ x_expand: true });
         this._headerBox.add_actor(this._title_label);
         this._headerBox.add_actor(buttonBox);
+        this.bind_property('in-folder',
+                           this._headerBox, 'visible',
+                           GObject.BindingFlags.SYNC_CREATE);
         this.add_actor(this._headerBox);
 
         this._scrollView = new St.ScrollView({
@@ -368,6 +377,10 @@ class CosmicAppDisplay extends St.Widget {
         });
     }
 
+    get inFolder() {
+        return !!this._folderId;
+    }
+
     get folder() {
         if (this._folderId && this._folders[this._folderId])
             return this._folders[this._folderId];
@@ -379,6 +392,7 @@ class CosmicAppDisplay extends St.Widget {
             this.folder.remove_style_pseudo_class('checked');
 
         this._folderId = folderId;
+        this.notify('in-folder');
 
         const ids = folderId !== null ? this.folder.apps : this._home_apps;
 
@@ -641,6 +655,10 @@ var CosmicAppsDialog = GObject.registerClass({
 
             this.fadeSearch(this.searchEntry.get_text() !== '');
         });
+
+        this.appDisplay.bind_property('in-folder',
+                                      this.searchEntry, 'visible',
+                                      GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.INVERT_BOOLEAN);
 
         const stack = new Shell.Stack();
         stack.add_child(this.resultsView);
