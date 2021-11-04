@@ -519,10 +519,10 @@ var CosmicAppDisplay = GObject.registerClass({
         const appIcons = this._box.get_children();
 
         const appIcons_ids = appIcons.map(x => x.getId());
-        const added = installed.filter(x => appIcons_ids.includes(x.get_id()));
+        const added = installed.filter(x => !appIcons_ids.includes(x.get_id()));
 
         const installed_ids = installed.map(x => x.get_id());
-        const removed = appIcons.filter(x => installed_ids.includes(x.getId()));
+        const removed = appIcons.filter(x => !installed_ids.includes(x.getId()));
 
         return [added, removed];
     }
