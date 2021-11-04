@@ -440,11 +440,13 @@ var CosmicAppDisplay = GObject.registerClass({
         });
         this._scrollView.add_actor(this._box);
 
+        let appIcons = [];
         Shell.AppSystem.get_default().get_installed().forEach(appInfo => {
             const app = Shell.AppSystem.get_default().lookup_app(appInfo.get_id());
-            const icon = new AppIcon(app);
-            this._box.add_actor(icon);
+            appIcons.push(new AppIcon(app));
         });
+        appIcons.sort((a, b) => a.app.get_name().localeCompare(b.app.get_name()))
+                .forEach(icon => this._box.add_actor(icon));
 
         this.add_actor(new St.Widget({ height: 1, style: "background: #000000;", }));
 
@@ -533,8 +535,12 @@ var CosmicAppDisplay = GObject.registerClass({
         removed.forEach(icon => icon.destroy());
         added.forEach(appInfo => {
             const app = Shell.AppSystem.get_default().lookup_app(appInfo.get_id());
-            const icon = new AppIcon(app);
-            this._box.add_actor(icon);
+            for (const icon of this._box.get_children()) {
+                if (icon.app.get_name().localeCompare(app.get_name()) > 0) {
+                    this._box.insert_child_above(new AppIcon(app), icon);
+                    break;
+                }
+            }
         });
 
         this._folders = {};
