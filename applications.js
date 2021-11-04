@@ -548,13 +548,16 @@ var CosmicAppDisplay = GObject.registerClass({
         const folders = this._folderSettings.get_strv('folder-children');
         folders.forEach(id => {
             const folder_button = new CosmicFolderButton(this, id);
+            folder_button.connect('notify::name', () => this._redisplay());
             folder_button.connect('apps-changed', () => {
                 this._updateHomeApps();
                 this.setFolder(this.folder.id);
             });
 
-            this._folderBox.add_actor(folder_button);
             this._folders[id] = folder_button;
+        });
+        Object.values(this._folders).sort((a, b) => a.name.localeCompare(b.name)).forEach(folder_button => {
+            this._folderBox.add_actor(folder_button);
         });
 
         const create_icon = new BaseIcon("Create Folder", { createIcon: size => {
