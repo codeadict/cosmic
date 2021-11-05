@@ -461,6 +461,7 @@ var CosmicAppDisplay = GObject.registerClass({
             x_expand: true,
             overlay_scrollbars: true
         });
+        this._scrollView.add_style_class_name('cosmic-app-scroll-view');
         this.add_actor(this._scrollView);
 
         this._parentalControlsManager = ParentalControlsManager.getDefault();

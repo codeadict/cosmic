@@ -14,10 +14,12 @@
 	background: #000000;
 }
 
-/* TODO */
 .cosmic-app-display {
-	width: 1000px;
-	height: 1000px;
+}
+
+.cosmic-app-scroll-view {
+	height: 504px;  /* 168 * 3 */
+	width: 1176px; /* 168 * 7 */
 }
 
 .cosmic-applications-folder-title {
