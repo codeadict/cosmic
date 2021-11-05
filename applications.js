@@ -825,7 +825,7 @@ var CosmicAppsDialog = GObject.registerClass({
         // Has to be top child to accept drag-and-drop
         stack.add_child(this.appDisplay);
 
-        const box = new St.BoxLayout({ vertical: true });
+        const box = new St.BoxLayout({ vertical: true, style_class: 'cosmic-applications-box' });
         box.add_child(this._header);
         box.add_child(stack);
 

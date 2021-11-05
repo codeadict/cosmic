@@ -2,6 +2,10 @@
 	background-color: #36322f;
 }
 
+.cosmic-applications-box {
+	spacing: 12px;
+}
+
 .cosmic-applications-icon {
 	color: #9b9b9b;
 }
