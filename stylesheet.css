@@ -14,8 +14,24 @@
 	background: #000000;
 }
 
+/* TODO */
+.cosmic-app-display {
+	width: 1000px;
+	height: 1000px;
+}
+
 .cosmic-applications-folder-title {
 	color: #ffffff;
 	font-weight: bold;
 	font-size: 1.5em;
+}
+
+.cosmic-app-icon {
+        height: 168px;
+        width: 168px;
+}
+
+.cosmic-base-folder-button {
+        height: 78px;
+        width: 120px;
 }

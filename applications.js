@@ -67,13 +67,11 @@ var CosmicBaseFolderButton = GObject.registerClass({
         this._icon = new BaseIcon("", { createIcon: size => {
             return new St.Icon ( { icon_name: icon_name, icon_size: size, style_class: 'cosmic-applications-icon' } );
         }, setSizeManually: true });
+        this._icon.setIconSize(32);
 
         super._init({ child: this._icon, style_class: 'app-well-app' });
 
-        this._icon.setIconSize(32);
-
-        this.height = 78;
-        this.width = 120;
+        this.add_style_class_name('cosmic-base-folder-button');
     }
 
     get label() {
@@ -260,8 +258,7 @@ var CosmicAppIcon = GObject.registerClass({
         text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
         text.ellipsize = Pango.EllipsizeMode.END;
 
-        this.height = 168;
-        this.width = 168;
+        this.add_style_class_name('cosmic-app-icon');
     }
 });
 
@@ -457,6 +454,7 @@ var CosmicAppDisplay = GObject.registerClass({
         super._init({
             layout_manager: new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL, spacing: 6 }),
         });
+        this.add_style_class_name('cosmic-app-display');
 
         this._scrollView = new St.ScrollView({
             hscrollbar_policy: St.PolicyType.NEVER,
@@ -803,7 +801,6 @@ var CosmicAppsDialog = GObject.registerClass({
         this.inSearch = false;
 
         this.appDisplay = new CosmicAppDisplay();
-        this.appDisplay.set_size(1000, 1000); // XXX
 
         this.resultsView = new CosmicSearchResultsView({ opacity: 0, visible: false });
 
