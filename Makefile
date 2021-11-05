@@ -18,6 +18,7 @@ SRC = applications.js \
       schemas/gschemas.compiled \
       schemas/org.gnome.shell.extensions.pop-cosmic.gschema.xml \
       settings.js \
+      stylesheet.css \
       topBarButton.js
 
 $(info UUID is "$(UUID)")

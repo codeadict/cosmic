@@ -11,7 +11,6 @@ const { RemoteSearchProvider2 } = imports.ui.remoteSearch;
 const Search = imports.ui.search;
 const { getTermsForSearchString } = imports.ui.searchController;
 
-// TODO css
 // TODO translate
 
 let dialog = null;
@@ -66,7 +65,7 @@ var CosmicBaseFolderButton = GObject.registerClass({
 }, class CosmicBaseFolderButton extends St.Button {
     _init(icon_name) {
         this._icon = new BaseIcon("", { createIcon: size => {
-            return new St.Icon ( { icon_name: icon_name, icon_size: size, style: "color: #9b9b9b" } );
+            return new St.Icon ( { icon_name: icon_name, icon_size: size, style_class: 'cosmic-applications-icon' } );
         }, setSizeManually: true });
 
         super._init({ child: this._icon, style_class: 'app-well-app' });
@@ -297,18 +296,18 @@ var CosmicAppsHeader = GObject.registerClass({
         this._inFolder = false;
 
         this._title_label = new St.Label({
-            style: "color: #ffffff; font-weight: bold; font-size: 1.5em;",
+            style_class: 'cosmic-applications-folder-title',
             x_expand: true,
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
         });
 
-        const rename_icon = new St.Icon ( { icon_name: 'edit-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
-        const rename_button = new St.Button({ child: rename_icon }); // TODO style?
+        const rename_icon = new St.Icon ( { icon_name: 'edit-symbolic', icon_size: 32, style_class: 'cosmic-applications-icon' } );
+        const rename_button = new St.Button({ child: rename_icon });
         rename_button.connect('clicked', () => this.emit('rename-clicked'));
 
-        const delete_icon = new St.Icon ( { icon_name: 'edit-delete-symbolic', icon_size: 32, style: "color: #9b9b9b" } );
-        const delete_button = new St.Button({ child: delete_icon }); // TODO style?
+        const delete_icon = new St.Icon ( { icon_name: 'edit-delete-symbolic', icon_size: 32, style_class: 'cosmic-applications-icon' } );
+        const delete_button = new St.Button({ child: delete_icon });
         delete_button.connect('clicked', () => this.emit('delete-clicked'));
 
         const buttonBox = new St.BoxLayout({ x_expand: true, x_align: Clutter.ActorAlign.END });
@@ -500,7 +499,7 @@ var CosmicAppDisplay = GObject.registerClass({
         appIcons.sort((a, b) => a.app.get_name().localeCompare(b.app.get_name()))
                 .forEach(icon => this._box.add_actor(icon));
 
-        this.add_actor(new St.Widget({ height: 1, style: "background: #000000;", }));
+        this.add_actor(new St.Widget({ height: 1, style_class: 'cosmic-applications-separator' }));
 
         this._folderBox = new St.Viewport({
             layout_manager: new Clutter.FlowLayout({
@@ -842,7 +841,7 @@ var CosmicAppsDialog = GObject.registerClass({
         box.add_child(stack);
 
         this.contentLayout.add(box);
-        this.dialogLayout._dialog.style = "background-color: #36322f;";
+        this.dialogLayout._dialog.add_style_class_name('cosmic-applications-dialog');
         this.connect("key-press-event", (_, event) => {
             if (event.get_key_symbol() == 65307)
                 this.hideDialog();

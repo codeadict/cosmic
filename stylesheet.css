@@ -1,0 +1,17 @@
+.cosmic-applications-dialog {
+	background-color: #36322f;
+}
+
+.cosmic-applications-icon {
+	color: #9b9b9b;
+}
+
+.cosmic-applications-separator {
+	background: #000000;
+}
+
+.cosmic-applications-folder-title {
+	color: #ffffff;
+	font-weight: bold;
+	font-size: 1.5em;
+}
