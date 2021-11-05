@@ -71,18 +71,13 @@ var CosmicBaseFolderButton = GObject.registerClass({
         super._init({ child: this._icon, style_class: 'app-well-app' });
 
         this._icon.setIconSize(32);
+
+        this.height = 78;
+        this.width = 120;
     }
 
     get label() {
         return this._icon.label;
-    }
-
-    vfunc_get_preferred_height() {
-        return [78, 78];
-    }
-
-    vfunc_get_preferred_width() {
-        return [120, 120];
     }
 });
 
@@ -264,15 +259,9 @@ var CosmicAppIcon = GObject.registerClass({
         text.line_wrap = true;
         text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
         text.ellipsize = Pango.EllipsizeMode.END;
-    }
 
-    vfunc_get_preferred_height() {
-        //return [120, 120];
-        return [168, 168];
-    }
-
-    vfunc_get_preferred_width() {
-        return [168, 168];
+        this.height = 168;
+        this.width = 168;
     }
 });
 
