@@ -1,5 +1,5 @@
-const { Clutter, Gio, GLib, GObject, Shell, St } = imports.gi;
-const { AppIcon, AppSearchProvider } = imports.ui.appDisplay;
+const { Clutter, Gio, GLib, GObject, Pango, Shell, St } = imports.gi;
+const AppDisplay = imports.ui.appDisplay;
 const { BaseIcon } = imports.ui.iconGrid;
 const DND = imports.ui.dnd;
 const { ExtensionState } = imports.misc.extensionUtils;
@@ -61,6 +61,33 @@ var CosmicFolderEditDialog = GObject.registerClass({
     }
 });
 
+// Used for `CosmicFolderButton`, and also add folder button
+var CosmicBaseFolderButton = GObject.registerClass({
+}, class CosmicBaseFolderButton extends St.Button {
+    _init(icon_name) {
+        this._icon = new BaseIcon("", { createIcon: size => {
+            return new St.Icon ( { icon_name: icon_name, icon_size: size, style: "color: #9b9b9b" } );
+        }, setSizeManually: true });
+
+        super._init({ child: this._icon, style_class: 'app-well-app' });
+
+        this._icon.setIconSize(32);
+    }
+
+    get label() {
+        return this._icon.label;
+    }
+
+    vfunc_get_preferred_height() {
+        return [78, 78];
+    }
+
+    vfunc_get_preferred_width() {
+        return [120, 120];
+    }
+});
+
+// Button for a folder, or "Library Home"
 var CosmicFolderButton = GObject.registerClass({
     Signals: { 'apps-changed': {} },
     Properties: {
@@ -69,7 +96,7 @@ var CosmicFolderButton = GObject.registerClass({
             GObject.ParamFlags.READABLE,
             null),
     },
-}, class CosmicFolderButton extends St.Button {
+}, class CosmicFolderButton extends CosmicBaseFolderButton {
     _init(appDisplay, id) {
         this._appDisplay = appDisplay;
         this._id = id;
@@ -89,11 +116,7 @@ var CosmicFolderButton = GObject.registerClass({
             this.nameChangedId = this.settings.connect('changed::name', () => this._updateName());
        }
 
-        this._icon = new BaseIcon("", { createIcon: size => {
-            return new St.Icon ( { icon_name: icon_name, icon_size: size, style: "color: #9b9b9b" } );
-        } });
-
-        super._init({ child: this._icon, style_class: 'app-well-app' });
+        super._init(icon_name);
         this._delegate = this;
 
         this.connect('clicked', () => this._appDisplay.setFolder(this.id));
@@ -122,7 +145,7 @@ var CosmicFolderButton = GObject.registerClass({
     }
 
     get name() {
-        return this._icon.label.text;
+        return this.label.text;
     }
 
     _updateApps() {
@@ -171,19 +194,19 @@ var CosmicFolderButton = GObject.registerClass({
             }
         }
 
-        this._icon.label.text = name;
+        this.label.text = name;
         this.notify('name');
     }
 
     handleDragOver(source, _actor, _x, _y, _time) {
-        if (!(source instanceof AppIcon) || !this.inAppDisplay(source))
+        if (!(source instanceof AppDisplay.AppIcon) || !this.inAppDisplay(source))
             return DND.DragMotionResult.CONTINUE;
 
         return DND.DragMotionResult.COPY_DROP;
     }
 
     acceptDrop(source, _actor, _x, _y, _time) {
-        if (!(source instanceof AppIcon) || !this.inAppDisplay(source))
+        if (!(source instanceof AppDisplay.AppIcon) || !this.inAppDisplay(source))
             return false;
 
         const id = source.getId();
@@ -222,6 +245,35 @@ var CosmicFolderButton = GObject.registerClass({
                 return actor;
         }
         return null;
+    }
+});
+
+var CosmicAppIcon = GObject.registerClass({
+}, class CosmicAppIcon extends AppDisplay.AppIcon {
+    _init(app) {
+        super._init(app, { setSizeManually: true, expandTitleOnHover: false });
+
+        this.icon.setIconSize(72);
+        this.icon.x_expand = true;
+        this.icon.y_expand = true;
+
+        // Vertically center label in available space
+        this.icon.label.y_expand = true;
+
+        // Unlike stock Gnome, wrap to multiple lines, then ellipsize
+        const text = this.icon.label.clutter_text;
+        text.line_wrap = true;
+        text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
+        text.ellipsize = Pango.EllipsizeMode.END;
+    }
+
+    vfunc_get_preferred_height() {
+        //return [120, 120];
+        return [168, 168];
+    }
+
+    vfunc_get_preferred_width() {
+        return [168, 168];
     }
 });
 
@@ -443,7 +495,7 @@ var CosmicAppDisplay = GObject.registerClass({
         let appIcons = [];
         Shell.AppSystem.get_default().get_installed().forEach(appInfo => {
             const app = Shell.AppSystem.get_default().lookup_app(appInfo.get_id());
-            appIcons.push(new AppIcon(app));
+            appIcons.push(new CosmicAppIcon(app));
         });
         appIcons.sort((a, b) => a.app.get_name().localeCompare(b.app.get_name()))
                 .forEach(icon => this._box.add_actor(icon));
@@ -537,7 +589,7 @@ var CosmicAppDisplay = GObject.registerClass({
             const app = Shell.AppSystem.get_default().lookup_app(appInfo.get_id());
             for (const icon of this._box.get_children()) {
                 if (icon.app.get_name().localeCompare(app.get_name()) > 0) {
-                    this._box.insert_child_above(new AppIcon(app), icon);
+                    this._box.insert_child_above(new CosmicAppIcon(app), icon);
                     break;
                 }
             }
@@ -566,10 +618,8 @@ var CosmicAppDisplay = GObject.registerClass({
             this._folderBox.add_actor(folder_button);
         });
 
-        const create_icon = new BaseIcon("Create Folder", { createIcon: size => {
-            return new St.Icon ( { icon_name: 'folder-new-symbolic', icon_size: size, style: "color: #9b9b9b" } );
-        } });
-        const create_button = new St.Button({ child: create_icon, style_class: 'app-well-app' });
+        const create_button = new CosmicBaseFolderButton('folder-new-symbolic');
+        create_button.label.text = "Create Folder";
         create_button.connect('clicked', () => this.open_create_folder_dialog());
         this._folderBox.add_actor(create_button);
 
@@ -677,7 +727,7 @@ var CosmicSearchResultsView = GObject.registerClass({
         this._terms = [];
         this._results = {};
 
-        const provider = new AppSearchProvider();
+        const provider = new AppDisplay.AppSearchProvider();
         const providerDisplay = new Search.GridSearchResults(provider, this);
         this._content.add(providerDisplay)
         provider.display = providerDisplay;
@@ -872,7 +922,6 @@ function visible() {
 
 function show() {
     dialog.showDialog();
-    Main.wm.allowKeybinding('panel-run-dialog', Shell.ActionMode.ALL);
 }
 
 function hide() {
