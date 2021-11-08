@@ -845,7 +845,12 @@ var CosmicAppsDialog = GObject.registerClass({
             const [ cursor_x, cursor_y ] = global.get_pointer();
 
             if (this.visible && (cursor_x < x || cursor_x > x + width || cursor_y < y || cursor_y > y + height))
-                this.hideDialog();
+                // Use `idle_add` hide after normal input handlers.
+                // Prevents 'Applications' button from closing then re-opening.
+                GLib.idle_add(() => {
+                    this.hideDialog();
+                    return false;
+                });
         });
     }
 
