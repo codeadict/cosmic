@@ -796,7 +796,12 @@ var CosmicSearchResultsView = GObject.registerClass({
 var CosmicAppsDialog = GObject.registerClass({
 }, class CosmicAppsDialog extends CosmicModalDialog {
     _init() {
-        super._init({ destroyOnClose: false, shellReactive: true });
+        super._init({
+            destroyOnClose: false,
+            shellReactive: true,
+            // Allows all the key bindings normally available in overview
+            actionMode: Shell.ActionMode.OVERVIEW,
+        });
         this.connect('destroy', this._onDestroy.bind(this));
 
         this.inSearch = false;
