@@ -917,11 +917,12 @@ function disable() {
 }
 
 function visible() {
-    return dialog.state == State.OPENED || dialog.state == State.OPENING || dialog._hiding;
+    return dialog.state == State.OPENED || dialog.state == State.OPENING;
 }
 
 function show() {
-    dialog.showDialog();
+    if (!dialog._hiding)
+        dialog.showDialog();
 }
 
 function hide() {
