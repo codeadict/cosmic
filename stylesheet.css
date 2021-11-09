@@ -18,7 +18,7 @@
 }
 
 .cosmic-app-scroll-view {
-	height: 504px;  /* 168 * 3 */
+	height: 505px;  /* 168 * 3 + 1; visual artifacts if even for some reason */
 	width: 1176px; /* 168 * 7 */
 }
 
@@ -34,6 +34,5 @@
 }
 
 .cosmic-base-folder-button {
-        height: 78px;
         width: 120px;
 }
