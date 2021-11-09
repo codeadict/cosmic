@@ -796,8 +796,6 @@ var CosmicSearchResultsView = GObject.registerClass({
 var CosmicAppsDialog = GObject.registerClass({
 }, class CosmicAppsDialog extends CosmicModalDialog {
     _init() {
-        this._hiding = false;
-
         super._init({
             destroyOnClose: false,
             shellReactive: true,
@@ -847,14 +845,17 @@ var CosmicAppsDialog = GObject.registerClass({
             const [ cursor_x, cursor_y ] = global.get_pointer();
 
             if (this.visible && (cursor_x < x || cursor_x > x + width || cursor_y < y || cursor_y > y + height)) {
-                this._hiding = true;
+                // Don't want clicking button to close and re-open popup
+                const apps_button = Main.panel.statusArea['cosmic_applications'];
+                const [button_x, button_y] = apps_button.get_transformed_position();
+                if (apps_button && !(cursor_x < button_x ||
+                                     cursor_x > button_x + width ||
+                                     cursor_y < button_y ||
+                                     cursor_y > button_y + height))
+                    return;
+
                 this.hideDialog();
             }
-        });
-
-        // `_hiding` is a workaround for two event handlers when pressing 'Applications' button
-        this.button_press_id = global.stage.connect_after('button-release-event', () => {
-            this._hiding = false;
         });
     }
 
@@ -921,8 +922,7 @@ function visible() {
 }
 
 function show() {
-    if (!dialog._hiding)
-        dialog.showDialog();
+    dialog.showDialog();
 }
 
 function hide() {
