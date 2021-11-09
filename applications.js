@@ -847,11 +847,12 @@ var CosmicAppsDialog = GObject.registerClass({
             if (this.visible && (cursor_x < x || cursor_x > x + width || cursor_y < y || cursor_y > y + height)) {
                 // Don't want clicking button to close and re-open popup
                 const apps_button = Main.panel.statusArea['cosmic_applications'];
-                const [button_x, button_y] = apps_button.get_transformed_position();
-                if (apps_button && !(cursor_x < button_x ||
-                                     cursor_x > button_x + width ||
-                                     cursor_y < button_y ||
-                                     cursor_y > button_y + height))
+                const [ button_x, button_y ] = apps_button.get_transformed_position();
+                const [ button_width, button_height ] = apps_button.get_transformed_size();
+                if (!(cursor_x < button_x ||
+                      cursor_x > button_x + button_width ||
+                      cursor_y < button_y ||
+                      cursor_y > button_y + button_height))
                     return;
 
                 this.hideDialog();
