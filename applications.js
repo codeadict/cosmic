@@ -796,6 +796,8 @@ var CosmicSearchResultsView = GObject.registerClass({
 var CosmicAppsDialog = GObject.registerClass({
 }, class CosmicAppsDialog extends CosmicModalDialog {
     _init() {
+        this._hiding = false;
+
         super._init({
             destroyOnClose: false,
             shellReactive: true,
@@ -844,13 +846,15 @@ var CosmicAppsDialog = GObject.registerClass({
             const [ x, y ] = this.dialogLayout._dialog.get_transformed_position();
             const [ cursor_x, cursor_y ] = global.get_pointer();
 
-            if (this.visible && (cursor_x < x || cursor_x > x + width || cursor_y < y || cursor_y > y + height))
-                // Use `idle_add` hide after normal input handlers.
-                // Prevents 'Applications' button from closing then re-opening.
-                GLib.idle_add(() => {
-                    this.hideDialog();
-                    return false;
-                });
+            if (this.visible && (cursor_x < x || cursor_x > x + width || cursor_y < y || cursor_y > y + height)) {
+                this._hiding = true;
+                this.hideDialog();
+            }
+        });
+
+        // `_hiding` is a workaround for two event handlers when pressing 'Applications' button
+        this.button_press_id = global.stage.connect_after('button-release-event', () => {
+            this._hiding = false;
         });
     }
 
@@ -913,7 +917,7 @@ function disable() {
 }
 
 function visible() {
-    return dialog.state == State.OPENED || dialog.state == State.OPENING;
+    return dialog.state == State.OPENED || dialog.state == State.OPENING || dialog._hiding;
 }
 
 function show() {
